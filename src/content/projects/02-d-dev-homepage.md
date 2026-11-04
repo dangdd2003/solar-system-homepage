@@ -1,9 +1,9 @@
 ---
 title: "Đ-Dev Homepage"
-description: "This site: an interactive solar-system portfolio built with Astro, Three.js and custom GLSL shaders, where the Sun, Mars, Earth and Saturn open the About, Projects, More and Contact sections."
-tags: ["TypeScript", "Astro", "Three.js", "WebGL", "GLSL"]
+description: "My previous portfolio homepage, built with Next.js, React and Chakra UI: an interactive Three.js Earth with day/night, cloud and Fresnel atmosphere shaders over a starfield, Framer Motion page transitions, light/dark themes, and Works, Articles, More and Connect pages."
+tags: ["TypeScript", "Next.js", "React", "Chakra UI", "Three.js"]
 order: 2
 featured: false
 github: "https://github.com/dangdd2003/d-dev-homepage"
-link: "https://www.dangdd.dev"
+link: "https://old.dangdd.dev"
 ---
