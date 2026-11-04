@@ -1,0 +1,375 @@
+---
+/**
+ * Custom 404 ("Hero echo"). Deliberately not built on BaseLayout: that layout mounts the
+ * startup intro, the three.js SolarSystem, texture preloads and in-page #anchor nav.
+ * This page ships global.css only (tokens, .btn, .surface-chip, .container, .sr-only,
+ * focus styles) and has no scripts, so it works with JavaScript disabled.
+ */
+import "../styles/global.css";
+
+const year = new Date().getFullYear();
+
+const jumpLinks = [
+  { href: "/#about", label: "About" },
+  { href: "/#projects", label: "Projects" }
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <meta
+      name="description"
+      content="This page drifted out of the solar system. Head back to Đ-Dev, the portfolio of Doan Dinh Dang."
+    />
+    <meta name="author" content="Doan Dinh Dang" />
+    <meta name="theme-color" content="#08080c" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <title>Doan Dinh Dang | Page not found</title>
+  </head>
+  <body class="lost-page">
+    <a class="skip-link" href="#main-content">
+      Skip to content
+    </a>
+    <div class="lost-sky" aria-hidden="true">
+      <span class="lost-sky__twinkle"></span>
+    </div>
+
+    <main id="main-content" class="lost" tabindex="-1">
+      <div class="container">
+        <p class="lost__eyebrow">
+          <span class="lost__led" aria-hidden="true"></span>
+          Error 404
+        </p>
+        <div class="lost__name">
+          <span class="lost__orbit" aria-hidden="true"></span>
+          <h1 class="lost__title">Page not found.</h1>
+        </div>
+        <h2 class="lost__subtitle">This page drifted out of the solar system.</h2>
+        <p class="lost__lead">
+          The link may be broken, or the page may have moved. Head back to the sun, or jump to a
+          section below.
+        </p>
+        <div class="lost__actions">
+          <a class="btn btn--primary" href="/">
+            Back to the solar system
+          </a>
+          <a class="btn btn--ghost" href="/#contact">
+            Get in touch
+          </a>
+        </div>
+
+        <nav class="lost__jump" aria-labelledby="lost-jump-label">
+          <p class="lost__label" id="lost-jump-label">
+            Or jump to
+          </p>
+          <ul class="lost__chips">
+            {jumpLinks.map((link) => (
+              <li>
+                <a class="surface-chip" href={link.href}>
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </main>
+
+    <footer class="lost__footer">
+      <p>© {year} Đ-Dev</p>
+    </footer>
+
+    <style>
+      /* Fixed sky layer sits behind the content; glass chips sample it through backdrop-filter. */
+      .lost-sky {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-color: var(--color-bg);
+        background-image:
+          radial-gradient(
+            60% 45% at 85% 100%,
+            rgba(246, 173, 85, 0.16) 0%,
+            rgba(246, 173, 85, 0) 70%
+          ),
+          radial-gradient(
+            70% 60% at 50% 0%,
+            rgba(255, 255, 255, 0.05) 0%,
+            rgba(255, 255, 255, 0) 70%
+          ),
+          radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.7), transparent),
+          radial-gradient(1px 1px at 120px 90px, rgba(255, 255, 255, 0.5), transparent),
+          radial-gradient(1.5px 1.5px at 200px 160px, rgba(255, 255, 255, 0.6), transparent),
+          radial-gradient(1px 1px at 300px 40px, rgba(255, 255, 255, 0.4), transparent),
+          radial-gradient(1px 1px at 260px 240px, rgba(255, 255, 255, 0.5), transparent);
+        background-size:
+          100% 100%,
+          100% 100%,
+          320px 280px,
+          320px 280px,
+          320px 280px,
+          320px 280px,
+          320px 280px;
+        background-repeat: no-repeat, no-repeat, repeat, repeat, repeat, repeat, repeat;
+      }
+
+      /* Second, sparser star layer: a stepped blink, frozen at a fixed alpha under reduced motion. */
+      .lost-sky__twinkle {
+        position: absolute;
+        inset: 0;
+        opacity: 0.6;
+        background-image:
+          radial-gradient(1px 1px at 60px 120px, rgba(255, 255, 255, 0.9), transparent),
+          radial-gradient(1px 1px at 230px 20px, rgba(255, 255, 255, 0.8), transparent),
+          radial-gradient(1.5px 1.5px at 390px 210px, rgba(255, 255, 255, 0.7), transparent);
+        background-size: 460px 300px;
+      }
+
+      .lost-page {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+
+      .lost {
+        position: relative;
+        z-index: 1;
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding-block: max(var(--space-lg), env(safe-area-inset-top, 0px)) var(--space-md);
+        /* Guards against the decorative orbit ring ever causing sideways scroll. */
+        overflow-x: clip;
+      }
+
+      /* Hero echo typography: same roles and sizes as Hero.astro. */
+      .lost__eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--color-text-muted);
+        font-family: var(--font-mono);
+        font-size: 0.95rem;
+        letter-spacing: 0.05em;
+        margin-bottom: var(--space-xs);
+        text-shadow:
+          0 1px 12px rgba(0, 0, 0, 0.95),
+          0 0 2px rgba(0, 0, 0, 0.8);
+      }
+
+      /* Status LED: reads the planet token, which stays at its white default here (no planet is focused). */
+      .lost__led {
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 50%;
+        background: rgb(var(--planet-rgb));
+        box-shadow: 0 0 8px rgba(var(--planet-rgb), 0.8);
+        flex: none;
+      }
+
+      .lost__name {
+        position: relative;
+        isolation: isolate;
+        width: fit-content;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .lost__orbit {
+        position: absolute;
+        inset: -38% -8%;
+        z-index: -1;
+        border-radius: 50%;
+        border: 1.5px solid rgba(246, 173, 85, 0.7);
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      @media (max-width: 600px) {
+        .lost__orbit {
+          inset: -30% 0;
+        }
+      }
+
+      .lost__title {
+        font-size: clamp(2.5rem, min(6vw, 9vh), 4.5rem);
+        line-height: 1.15;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        padding-bottom: 0.15em;
+        margin-bottom: calc(var(--space-xs) - 0.15em);
+        color: var(--color-text);
+        background-image: linear-gradient(135deg, #ffffff 35%, #e2e8f0 65%, #f6ad55 100%);
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .lost__subtitle,
+      .lost__lead,
+      .lost__label {
+        text-shadow:
+          0 1px 12px rgba(0, 0, 0, 0.95),
+          0 0 2px rgba(0, 0, 0, 0.8);
+      }
+
+      .lost__subtitle {
+        color: var(--color-text-muted);
+        font-size: clamp(1.25rem, min(3.6vw, 5.2vh), 2.75rem);
+        line-height: 1.15;
+        letter-spacing: -0.025em;
+        font-weight: 500;
+        margin-bottom: var(--space-md);
+      }
+
+      .lost__lead {
+        max-width: 44ch;
+        color: var(--color-text-muted);
+        font-size: var(--text-lead);
+        line-height: 1.65;
+        margin-bottom: var(--space-lg);
+      }
+
+      .lost__actions {
+        display: flex;
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+      }
+
+      .lost__jump {
+        margin-top: var(--space-md);
+      }
+
+      .lost__label {
+        color: var(--color-text-muted);
+        font-family: var(--font-mono);
+        font-size: var(--text-label);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: var(--space-xs);
+      }
+
+      .lost__chips {
+        list-style: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+      }
+
+      .lost__chips a.surface-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 1.1rem;
+        border-radius: var(--radius);
+        border: var(--glass-border-subtle);
+        background: var(--glass-bg-subtle);
+        backdrop-filter: var(--glass-blur-sm);
+        -webkit-backdrop-filter: var(--glass-blur-sm);
+        box-shadow: var(--glass-shadow-sm);
+        color: var(--color-text-muted);
+        font-family: var(--font-mono);
+        font-size: var(--text-chip);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      @media (any-hover: hover) and (any-pointer: fine) {
+        .lost__chips a.surface-chip:hover {
+          color: var(--color-text);
+        }
+      }
+
+      /* Entrance and ambient motion: CSS only, skipped entirely under reduced motion.
+         backwards fill means nothing is held after the animation, so .btn hover transforms
+         are not overridden. */
+      @keyframes lost-rise {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      @keyframes lost-blink {
+        to {
+          visibility: hidden;
+        }
+      }
+
+      @keyframes lost-twinkle {
+        from {
+          opacity: 0.25;
+        }
+        to {
+          opacity: 0.9;
+        }
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .lost__eyebrow,
+        .lost__name,
+        .lost__subtitle,
+        .lost__lead,
+        .lost__actions,
+        .lost__jump {
+          animation: lost-rise 0.9s var(--ease-apple) backwards;
+        }
+        .lost__name {
+          animation-delay: 120ms;
+        }
+        .lost__subtitle {
+          animation-delay: 260ms;
+        }
+        .lost__lead {
+          animation-delay: 300ms;
+        }
+        .lost__actions {
+          animation-delay: 360ms;
+        }
+        .lost__jump {
+          animation-delay: 420ms;
+        }
+        .lost__led {
+          animation: lost-blink 1.6s steps(2, jump-none) infinite;
+        }
+        .lost-sky__twinkle {
+          animation: lost-twinkle 3.2s steps(4, jump-none) infinite alternate;
+        }
+      }
+
+      @media (orientation: portrait), (max-width: 600px) {
+        .lost__lead {
+          margin-bottom: var(--space-md);
+        }
+      }
+
+      .lost__footer {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        padding-block: var(--space-md) max(var(--space-md), env(safe-area-inset-bottom, 0px));
+        color: var(--color-text-muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+    </style>
+  </body>
+</html>

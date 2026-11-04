@@ -1,0 +1,194 @@
+---
+import "../styles/global.css";
+import "../styles/panels.css";
+import "../styles/reveal.css";
+import StartupScreen from "../components/StartupScreen.astro";
+import SolarSystem from "../components/SolarSystem.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import SocialMeta from "../components/SocialMeta.astro";
+import { buildSocialMeta, type SocialImage, type SocialMetaInput } from "../utils/social";
+import { ogImages } from "../utils/og-image";
+
+interface Props {
+  /** Browser-tab title. */
+  title?: string;
+  description?: string;
+  /** Link-preview headline; defaults to the descriptive site headline. */
+  socialTitle?: string;
+  /** Link-preview images: primary 1.91:1 card first, then fallbacks. Defaults to the site cards. */
+  images?: readonly [SocialImage, ...SocialImage[]];
+  type?: SocialMetaInput["type"];
+}
+
+const DEFAULT_SOCIAL_TITLE = "Doan Dinh Dang (Đ-Dev): System & Cloud Engineer";
+
+const {
+  title = "Doan Dinh Dang | Home",
+  description = "Personal portfolio of Doan Dinh Dang (Đ-Dev), a System & Cloud Engineer in Hanoi working on cloud infrastructure, DevOps and AI/ML projects.",
+  socialTitle = DEFAULT_SOCIAL_TITLE,
+  images = await ogImages(),
+  type = "website"
+} = Astro.props;
+
+const siteUrl = Astro.site;
+if (!siteUrl) throw new Error("BaseLayout needs `site` set in astro.config.mjs");
+const canonicalURL = new URL(Astro.url.pathname, siteUrl);
+const socialMeta = buildSocialMeta(
+  {
+    title: socialTitle,
+    description,
+    pathname: Astro.url.pathname,
+    images,
+    type,
+    siteName: "Đ-Dev",
+    locale: "en_US"
+  },
+  siteUrl
+);
+const personJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Doan Dinh Dang",
+  alternateName: ["Đoàn Đình Đăng", "Đ-Dev"],
+  url: siteUrl.href,
+  jobTitle: "System & Cloud Engineer",
+  worksFor: { "@type": "Organization", name: "MobiFone Corporation" },
+  alumniOf: {
+    "@type": "CollegeOrUniversity",
+    name: "University of Science and Technology of Hanoi",
+    url: "https://usth.edu.vn/"
+  },
+  address: { "@type": "PostalAddress", addressLocality: "Hanoi", addressCountry: "VN" },
+  sameAs: ["https://github.com/dangdd2003", "https://www.linkedin.com/in/dangdd2003"]
+}).replace(/</g, "\\u003c");
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <meta name="author" content="Doan Dinh Dang" />
+    <script type="application/ld+json" set:html={personJsonLd} />
+    <link rel="canonical" href={canonicalURL} />
+
+    <!-- Link previews: Open Graph (Facebook, Messenger, Instagram, LinkedIn, Discord, Telegram,
+         WhatsApp, Zalo, Slack, iMessage) + Twitter/X cards -->
+    <SocialMeta meta={socialMeta} />
+
+    <!-- Theme & Color Support -->
+    <meta name="theme-color" content="#08080c" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- Startup textures start downloading at HTML parse: the Sun first, then the inner planets the aperture reveals next.
+         as="fetch" + crossorigin matches the ImageBitmapLoader request (fetch, cors, same-origin credentials), so each file downloads once. -->
+    <link
+      rel="preload"
+      as="fetch"
+      href="/textures/planets/sun.webp"
+      type="image/webp"
+      crossorigin="anonymous"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="fetch"
+      href="/textures/planets/mercury.webp"
+      type="image/webp"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      as="fetch"
+      href="/textures/planets/venus.webp"
+      type="image/webp"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      as="fetch"
+      href="/textures/planets/earth.webp"
+      type="image/webp"
+      crossorigin="anonymous"
+    />
+
+    <script is:inline>
+      document.documentElement.classList.add("js");
+      // Input modality: html[data-input] is "touch" after a finger tap and "mouse" after a
+      // mouse or pen moves, so cursor-only effects (hover, spotlight) follow the input the
+      // visitor is using right now, including a mouse or trackpad attached to a touch device.
+      (function () {
+        const root = document.documentElement;
+        const set = function (mode) {
+          if (root.getAttribute("data-input") !== mode) root.setAttribute("data-input", mode);
+        };
+        const cursor =
+          window.matchMedia &&
+          window.matchMedia("(any-hover: hover) and (any-pointer: fine)").matches;
+        set(cursor ? "mouse" : "touch");
+        const onPointer = function (e) {
+          if (e.pointerType === "touch") set("touch");
+          else if (e.pointerType === "mouse" || e.pointerType === "pen") set("mouse");
+        };
+        window.addEventListener("pointerdown", onPointer, { capture: true, passive: true });
+        window.addEventListener(
+          "pointermove",
+          function (e) {
+            if (e.pointerType !== "touch") onPointer(e);
+          },
+          { capture: true, passive: true }
+        );
+      })();
+      try {
+        if (sessionStorage.getItem("d_dev_has_seen_startup") === "true") {
+          document.documentElement.classList.add("startup-ready");
+          document.documentElement.classList.add("startup-seen");
+        }
+      } catch {
+        /* storage or Image unavailable: non-critical */
+      }
+    </script>
+    <style is:inline>
+      /* Critical first-paint suppression: guaranteed 0ms execution before body parses */
+      html.js:not(.startup-ready):not(.startup-seen) .nav,
+      html.js:not(.startup-ready):not(.startup-seen) .left-controls,
+      html.js:not(.startup-ready):not(.startup-seen) .speed-controls,
+      html.js:not(.startup-ready):not(.startup-seen) #texture-loading,
+      html.js:not(.startup-ready):not(.startup-seen) #fact-card {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+    </style>
+    <title>{title}</title>
+  </head>
+  <body data-mode="reading">
+    <a class="skip-link" href="#main-content">
+      Skip to content
+    </a>
+    <div id="a11y-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+    <StartupScreen />
+    <SolarSystem />
+    <Nav />
+    <main id="main-content" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+
+    <script>
+      import { onPageReady } from "../scripts/page-ready";
+      import { initReveal } from "../scripts/reveal";
+      import { initViewportMotion } from "../scripts/viewport-motion";
+
+      onPageReady(() => initReveal());
+      onPageReady(() => initViewportMotion());
+    </script>
+  </body>
+</html>

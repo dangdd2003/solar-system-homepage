@@ -1,0 +1,810 @@
+---
+import Footer from "./Footer.astro";
+import { getCollection } from "astro:content";
+
+const projects = await getCollection("projects");
+const sortedProjects = projects.sort((a, b) => a.data.order - b.data.order);
+
+// Count tag frequencies
+const tagCounts = new Map<string, number>();
+const tagOriginals = new Map<string, string>();
+sortedProjects.forEach((p) => {
+  p.data.tags.forEach((t) => {
+    const lower = t.toLowerCase();
+    let original = tagOriginals.get(lower);
+    if (original === undefined) {
+      original = t;
+      tagOriginals.set(lower, t);
+    }
+    tagCounts.set(original, (tagCounts.get(original) || 0) + 1);
+  });
+});
+
+// Sort tags by frequency descending, then alphabetically for ties
+const sortedTags = Array.from(tagCounts.keys()).sort((a, b) => {
+  const countDiff = (tagCounts.get(b) || 0) - (tagCounts.get(a) || 0);
+  if (countDiff !== 0) return countDiff;
+  return a.localeCompare(b);
+});
+
+// Show top primary tags and group the rest into inline overflow
+const MAX_PRIMARY_TAGS = 6;
+const primaryTags = sortedTags.slice(0, MAX_PRIMARY_TAGS);
+const overflowTags = sortedTags.slice(MAX_PRIMARY_TAGS);
+---
+
+<section id="projects" class="section projects" data-planet-panel="mars">
+  <div class="container">
+    <h2 class="section__heading" data-reveal="@heading">
+      <span class="section__num" data-reveal-part="num">
+        02.
+      </span>{" "}
+      <span class="section__title" data-reveal-split>
+        Projects
+      </span>
+    </h2>
+
+    <div class="projects__filters-wrapper">
+      <div class="projects__filters" role="group" aria-label="Filter projects by technology">
+        {primaryTags.map((tag) => (
+          <button
+            type="button"
+            class="filter-pill surface-chip"
+            data-filter-btn={tag.toLowerCase()}
+            aria-pressed="false"
+            data-reveal="@chip"
+          >
+            <span>{tag}</span>
+            <span class="filter-pill__count">{tagCounts.get(tag) || 1}</span>
+          </button>
+        ))}
+
+        {overflowTags.map((tag) => (
+          <button
+            type="button"
+            class="filter-pill filter-pill--overflow surface-chip"
+            data-filter-btn={tag.toLowerCase()}
+            data-overflow-tag
+            aria-pressed="false"
+            hidden
+          >
+            <span>{tag}</span>
+            <span class="filter-pill__count">{tagCounts.get(tag) || 1}</span>
+          </button>
+        ))}
+
+        {overflowTags.length > 0 && (
+          <>
+            <button
+              type="button"
+              class="filter-pill filter-pill--toggle surface-chip"
+              data-other-toggle
+              aria-expanded="false"
+              data-reveal="@chip"
+              title="Show all other technology tags"
+            >
+              <span class="filter-pill__toggle-label">Other</span>
+              <span class="filter-pill__badge">+{overflowTags.length}</span>
+              <svg
+                class="filter-pill__icon"
+                viewBox="0 0 12 12"
+                width="12"
+                height="12"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 4.5l3 3 3-3" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              class="filter-pill filter-pill--collapse surface-chip"
+              data-less-toggle
+              hidden
+              title="Collapse technology tags"
+            >
+              <span>Collapse</span>
+              <svg
+                class="filter-pill__icon-collapse"
+                viewBox="0 0 12 12"
+                width="12"
+                height="12"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 7.5l3-3 3 3" />
+              </svg>
+            </button>
+          </>
+        )}
+
+        <button
+          type="button"
+          class="filter-pill filter-pill--reset surface-chip"
+          data-filter-reset
+          hidden
+          title="Reset filters"
+        >
+          <span>Reset Filter</span>
+          <svg
+            class="filter-pill__icon-reset"
+            viewBox="0 0 12 12"
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 3L3 9M3 3l6 6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="projects__toolbar">
+      <button
+        type="button"
+        class="filter-pill filter-pill--sort surface-chip"
+        data-project-sort
+        data-sort-mode="date"
+        data-reveal="@chip"
+        aria-label="Sort projects"
+        title="Sort: Default order (Click for A–Z)"
+      >
+        <svg
+          class="sort-icon sort-icon--date"
+          viewBox="0 0 16 16"
+          width="13"
+          height="13"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="2" y="3" width="12" height="11" rx="2" ry="2" />
+          <line x1="11" y1="1" x2="11" y2="4" />
+          <line x1="5" y1="1" x2="5" y2="4" />
+          <line x1="2" y1="7" x2="14" y2="7" />
+        </svg>
+        <svg
+          class="sort-icon sort-icon--asc"
+          viewBox="0 0 16 16"
+          width="13"
+          height="13"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M2.5 3.5h5M2.5 7h3.5M2.5 10.5h2M11.5 12.5V3.5m0 0L9 6m2.5-2.5L14 6" />
+        </svg>
+        <svg
+          class="sort-icon sort-icon--desc"
+          viewBox="0 0 16 16"
+          width="13"
+          height="13"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M2.5 3.5h2M2.5 7h3.5M2.5 10.5h5M11.5 3.5v9m0 0L9 10m2.5 2.5L14 10" />
+        </svg>
+        <span class="sort-label">Default order</span>
+      </button>
+    </div>
+
+    <div class="projects__grid" data-resize-flip-group>
+      {sortedProjects.map((project) => (
+        <article
+          class="card surface-card"
+          data-order={project.data.order}
+          data-title={project.data.title}
+          data-tags={JSON.stringify(project.data.tags.map((t) => t.toLowerCase()))}
+          data-reveal="@card"
+          data-spotlight
+        >
+          <h3 class="card__title">
+            {project.data.title}
+            {project.data.featured && <span class="card__badge">Featured</span>}
+          </h3>
+          <p class="card__desc">{project.data.description}</p>
+          <ul class="card__tags">
+            {project.data.tags.map((tag) => (
+              <li>
+                <button
+                  type="button"
+                  class="tag-btn surface-chip"
+                  data-tag-click={tag.toLowerCase()}
+                  title={`Filter by ${tag}`}
+                >
+                  {tag}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div class="card__actions">
+            {project.data.github && (
+              <a
+                class="card__link surface-chip"
+                href={project.data.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`GitHub repository for ${project.data.title} (opens in new tab)`}
+                title="GitHub repository"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  width="18"
+                  height="18"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                </svg>
+              </a>
+            )}
+            {project.data.link && (
+              <a
+                class="card__link surface-chip"
+                href={project.data.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Website for ${project.data.title} (opens in new tab)`}
+                title="Website"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="8" cy="8" r="6.5" />
+                  <path d="M1.5 8h13M8 1.5c1.8 1.8 2.6 4 2.6 6.5S9.8 12.7 8 14.5M8 1.5C6.2 3.3 5.4 5.5 5.4 8s.8 4.7 2.6 6.5" />
+                </svg>
+              </a>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+  <Footer panel />
+</section>
+
+<script src="../scripts/project-filter.ts"></script>
+
+<script>
+  import { onPageReady } from "../scripts/page-ready";
+  import { initTagScroll } from "../scripts/tag-scroll";
+
+  onPageReady(() => {
+    const root = document.getElementById("projects");
+    if (root) initTagScroll(root);
+  });
+</script>
+
+<style>
+  /* Overrides global .container: wider 80vw layout, no max-width, and no gutter padding (the width already accounts for it) */
+  .container {
+    width: min(calc(100vw - 2 * max(var(--space-sm), env(safe-area-inset-left, 0px))), 80vw);
+    max-width: none;
+    padding-inline: 0;
+  }
+
+  /* Narrow viewports: full width minus gutters, overriding the 80vw cap above */
+  @media (orientation: portrait), (max-width: 600px) {
+    .container {
+      width: calc(100vw - 2 * max(var(--space-sm), env(safe-area-inset-left, 0px)));
+    }
+  }
+
+  .section__heading {
+    margin-bottom: var(--space-md);
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .section__title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Liquid Glass Filter Bar */
+  .projects__filters-wrapper {
+    position: relative;
+    margin-bottom: var(--space-xs);
+    z-index: 30;
+  }
+
+  .projects__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.35rem 0.4rem;
+    overflow: visible;
+  }
+
+  /* Toolbar directly above project cards */
+  .projects__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: var(--space-sm);
+    margin-bottom: var(--space-md);
+    z-index: 25;
+    position: relative;
+  }
+
+  .filter-pill--sort {
+    gap: 0.45rem;
+    color: var(--color-text);
+    border-color: rgba(255, 255, 255, 0.22);
+    font-weight: 600;
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .filter-pill--sort:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      background: var(--glass-bg);
+    }
+  }
+
+  .sort-icon {
+    display: none;
+    flex-shrink: 0;
+  }
+
+  .filter-pill--sort[data-sort-mode="date"] .sort-icon--date {
+    display: block;
+  }
+
+  .filter-pill--sort[data-sort-mode="asc"] .sort-icon--asc {
+    display: block;
+  }
+
+  .filter-pill--sort[data-sort-mode="desc"] .sort-icon--desc {
+    display: block;
+  }
+
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0 clamp(0.65rem, 2vw, 1.1rem);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: clamp(0.75rem, 1.8vw, 0.82rem);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: var(--glass-bg-subtle);
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
+    border: var(--glass-border-subtle);
+    box-shadow: var(--glass-shadow-sm);
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent !important;
+    user-select: none !important;
+  }
+
+  .filter-pill[hidden] {
+    display: none !important;
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .filter-pill:hover {
+      color: var(--color-text);
+      background: var(--glass-bg);
+      box-shadow: var(--glass-shadow);
+    }
+  }
+
+  @media (forced-colors: active) {
+    .filter-pill[aria-pressed="true"],
+    .filter-pill.is-active {
+      outline: 2px solid Highlight;
+      outline-offset: 1px;
+    }
+  }
+
+  .filter-pill[aria-pressed="true"],
+  .filter-pill.is-active {
+    color: #ffffff;
+    background:
+      radial-gradient(
+        130% 100% at 50% 0%,
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(255, 255, 255, 0.05) 100%
+      ),
+      rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.45),
+      inset 0 -1px 0 0 rgba(255, 255, 255, 0.05),
+      0 8px 24px 0 rgba(0, 0, 0, 0.35),
+      0 2px 8px 0 rgba(0, 0, 0, 0.18);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  }
+
+  /* Overflow pills animated inline */
+  .filter-pill--overflow {
+    animation: pillPopIn 0.22s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .filter-pill--reset {
+    color: var(--planet-color, #ffffff);
+    border-color: rgba(var(--planet-rgb, 255, 255, 255), 0.35);
+    background:
+      radial-gradient(
+        130% 100% at 50% 0%,
+        rgba(var(--planet-rgb, 255, 255, 255), 0.08) 0%,
+        rgba(var(--planet-rgb, 255, 255, 255), 0.01) 100%
+      ),
+      rgba(0, 0, 0, 0.2);
+    padding-right: clamp(0.75rem, 2vw, 0.9rem);
+    gap: 0.3rem;
+    /* Plays each time the hidden attribute is removed (display: none -> visible) */
+    animation: pillPopIn 0.22s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .filter-pill--reset:hover {
+      color: #ffffff;
+      background: var(--glass-bg);
+      border-color: var(--planet-color, rgba(255, 255, 255, 0.6));
+      box-shadow: 0 0 15px rgba(var(--planet-rgb, 255, 255, 255), 0.2);
+    }
+  }
+  .filter-pill__icon-reset {
+    opacity: 0.8;
+  }
+
+  @keyframes pillPopIn {
+    from {
+      opacity: 0;
+      transform: scale(0.88) translateY(3px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .filter-pill__count {
+    font-size: 0.68rem;
+    opacity: 0.65;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.05rem 0.35rem;
+    border-radius: 999px;
+    margin-left: 0.4rem;
+  }
+
+  .filter-pill--toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-right: clamp(0.6rem, 1.5vw, 0.85rem);
+    border-style: dashed;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .filter-pill--toggle:hover {
+      border-style: solid;
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+  }
+
+  .filter-pill--toggle[aria-expanded="true"] {
+    border-style: solid;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .filter-pill__icon {
+    pointer-events: none;
+  }
+
+  .filter-pill--collapse {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding-right: clamp(0.6rem, 1.5vw, 0.85rem);
+    border-style: dashed;
+    border-color: rgba(255, 255, 255, 0.2);
+    animation: pillPopIn 0.22s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .filter-pill--collapse:hover {
+      border-style: solid;
+      border-color: rgba(255, 255, 255, 0.35);
+      color: #ffffff;
+    }
+  }
+
+  .filter-pill__icon-collapse {
+    pointer-events: none;
+  }
+
+  .filter-pill__badge {
+    font-size: var(--text-chip);
+    font-weight: 600;
+    opacity: 0.85;
+    background: rgba(255, 255, 255, 0.12);
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    margin-left: 0.2rem;
+  }
+
+  .projects__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
+    gap: var(--space-md);
+    justify-content: center;
+  }
+
+  /* Fixed-height glass card: title, scrollable description, single-row footer. Nothing may paint outside the box. */
+  .card {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    height: 18.75rem;
+    box-sizing: border-box;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
+    border-radius: var(--card-radius);
+    padding: 1.25rem;
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow: hidden;
+    /* Shared .surface-card handles transition, hover, focus and the lift. */
+  }
+
+  /* While anime's layout FLIP drives the cards, switch off the shared transitions so they do not lag each frame */
+  .projects__grid[data-layout-animating] > .card {
+    transition: none;
+  }
+
+  .card.is-filtered-out {
+    display: none;
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
+  }
+
+  /* Title wraps to at most two lines; the badge stays inline with it */
+  .card__title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    flex-shrink: 0;
+    margin: 0;
+    font-size: var(--text-title);
+    line-height: 1.35;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+
+  .card__badge {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text);
+    background: var(--glass-bg-subtle);
+    border: var(--glass-border-subtle);
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    text-shadow: none;
+    white-space: nowrap;
+  }
+
+  /* Takes the remaining height and scrolls inside it */
+  .card__desc {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    line-height: 1.55;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overflow-wrap: anywhere;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    padding-right: 0.3rem;
+    padding-bottom: 0.5rem;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 1rem), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 1rem), transparent);
+  }
+
+  .card__desc::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .card__desc::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .card__desc::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+  }
+
+  .card__desc::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
+
+  /* Single-row tag strip; overflow scrolls horizontally (wheel handled in tag-scroll.ts) */
+  .card__tags {
+    flex-shrink: 0;
+    min-width: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    list-style: none;
+    margin: 0;
+    padding: 3px 1px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.25rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 1.25rem), transparent);
+  }
+
+  .card__tags::-webkit-scrollbar {
+    display: none;
+  }
+
+  .card__tags li {
+    display: flex;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  /* Dedicated bottom row for action links (GitHub, website, ...), right-aligned. Always rendered so tag rows line up across cards. */
+  .card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    min-height: calc(2rem + 0.6rem);
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .card__actions:empty {
+    border-top-color: transparent;
+  }
+
+  .card__link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 8px;
+    color: var(--color-text-muted);
+    background: var(--glass-bg-subtle);
+    border: var(--glass-border-subtle);
+    text-decoration: none;
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .card__link:hover {
+      color: var(--color-text);
+      background: var(--glass-bg);
+    }
+  }
+
+  :global(:where(html[data-input="touch"])) .card__link:active {
+    color: var(--color-text);
+    background: var(--glass-bg);
+  }
+
+  /* Compact chip: tags are secondary metadata, so they stay small next to the card text */
+  .tag-btn {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: var(--text-chip);
+    min-height: 1.5rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    color: var(--color-text);
+    background: var(--glass-bg-subtle);
+    border: var(--glass-border-subtle);
+    padding: 0.15rem 0.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .tag-btn:hover {
+      color: #ffffff;
+      background: var(--glass-bg);
+    }
+  }
+
+  /* Short landscape screens: keep the filter bar to one scrollable row so it does not take three rows of the panel */
+  @media (max-height: 600px) and (orientation: landscape) {
+    .projects__filters {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      padding: 0.5rem 0.6rem;
+    }
+
+    .projects__filters::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  /* Phones: one column, so cards size to their content instead of a fixed height */
+  @media (max-width: 600px) {
+    .card {
+      height: auto;
+      padding: clamp(0.9rem, 4vw, 1.1rem) clamp(0.8rem, 4vw, 1rem);
+    }
+
+    .card__desc {
+      overflow: visible;
+      -webkit-mask-image: none;
+      mask-image: none;
+      padding-bottom: 0;
+    }
+
+    .card__actions:empty {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,602 @@
+/* =========================================================================
+   Reveal styles for section content (driven by src/scripts/reveal/*)
+
+   TIER_TOKENS (mirrored from src/scripts/reveal/tiers.ts):
+   compactMaxWidthPx: 480
+   landscapeMaxHeightPx: 500
+   landscapeMaxWidthPx: 932
+   zoomScale: 1.01
+
+   Usage: <div data-reveal="fade-up"> inside a [data-planet-panel].
+   Every unplayed element is hidden here; its anime timeline animates the
+   --rv-* custom properties below, which map onto opacity and the individual
+   `translate` / `scale` / `rotate` properties (not `transform`), so they
+   compose with components' own hover transforms. Once the engine sets
+   data-reveal-done these rules stop matching and the timeline is reverted.
+   Only applies with JS; no-JS and reduced-motion visitors see content as-is.
+   ========================================================================= */
+
+/* Registered so per-frame changes on a host do not restyle its subtree. */
+@property --rv-o {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+@property --rv-x {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rv-y {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --rv-s {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+@property --rv-sx {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+@property --rv-ux {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --rv-sy {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+@property --rv-r {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --rv-mx {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+@property --rv-my {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+@property --rv-mr {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --rv-tilt-x {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --rv-tilt-y {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --rv-veil {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --rv-edge {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --rv-flare {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --rv-clip {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+@property --rv-dot {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+/* Hidden before + mapping while playing. Inline vars written by anime
+   override the --rv-o: 0 here. opacity is !important so orbit-mode dimming
+   (panels.css) cannot show an unplayed element; once data-reveal-done is set
+   this rule stops matching and mode dimming applies again. */
+html.js [data-reveal]:not([data-reveal-done]) {
+  --rv-o: 0;
+  opacity: var(--rv-o) !important;
+  translate: var(--rv-x) var(--rv-y);
+  scale: calc(var(--rv-s) * var(--rv-sx)) calc(var(--rv-s) * var(--rv-sy));
+  rotate: var(--rv-r);
+  transition: none;
+}
+
+/* Split pieces (anime already inlines display: inline-block; kept for safety) */
+html.js [data-reveal] :is(.rv-char, .rv-word) {
+  display: inline-block;
+}
+
+/* Split gradient text (text-clip.ts): a piece with its own opacity or transform
+   falls out of its root's background-clip: text, so while the host plays each
+   piece paints its own slice of the root's background and the root paints none.
+   Once the host is done these stop matching and the root paints the whole text. */
+html.js [data-reveal]:not([data-reveal-done]) [data-rv-paint-root] {
+  background-image: none;
+}
+
+html.js [data-reveal]:not([data-reveal-done]) [data-rv-paint] {
+  background-image: var(--rv-paint-img);
+  background-size: var(--rv-paint-size);
+  background-position: var(--rv-paint-pos);
+  background-repeat: var(--rv-paint-repeat);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* The slice paints only inside the piece's border box, which stops short of
+     the g descender. Extra padding-bottom extends the painted slice; the equal
+     negative margin keeps the margin box, and so the layout, unchanged. */
+  padding-bottom: 0.3em;
+  margin-bottom: -0.3em;
+}
+
+/* Lines splitting wrapper */
+.rv-line {
+  display: block;
+  overflow: clip;
+}
+
+html.js [data-planet-panel] {
+  overflow-x: clip;
+}
+
+/* Masks: attribute-selected shapes (written by the kit's useMask while the
+   host is still hidden). Anime slides the mask position or the iris via
+   --rv-mx / --rv-my / --rv-mr. A mask rather than clip-path, because
+   IntersectionObserver treats a fully clip-pathed element as not intersecting.
+   Gated to desktop / fine pointers to protect battery and GPU on mobile. */
+@media (min-width: 481px) and (any-hover: hover) and (any-pointer: fine) {
+  html.js [data-reveal-mask="sweep-right"]:not([data-reveal-done]) {
+    -webkit-mask-image: linear-gradient(90deg, #000 45%, transparent 55%);
+    mask-image: linear-gradient(90deg, #000 45%, transparent 55%);
+    -webkit-mask-size: 250% 100%;
+    mask-size: 250% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: 100% 0%;
+    mask-position: 100% 0%;
+  }
+
+  html.js [data-reveal-mask="sweep-left"]:not([data-reveal-done]) {
+    -webkit-mask-image: linear-gradient(270deg, #000 45%, transparent 55%);
+    mask-image: linear-gradient(270deg, #000 45%, transparent 55%);
+    -webkit-mask-size: 250% 100%;
+    mask-size: 250% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: 0% 0%;
+    mask-position: 0% 0%;
+  }
+
+  html.js [data-reveal-mask="sweep-up"]:not([data-reveal-done]) {
+    -webkit-mask-image: linear-gradient(0deg, #000 45%, transparent 55%);
+    mask-image: linear-gradient(0deg, #000 45%, transparent 55%);
+    -webkit-mask-size: 100% 250%;
+    mask-size: 100% 250%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: 0% 0%;
+    mask-position: 0% 0%;
+  }
+
+  html.js [data-reveal-mask="sweep-down"]:not([data-reveal-done]) {
+    -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 55%);
+    mask-image: linear-gradient(180deg, #000 45%, transparent 55%);
+    -webkit-mask-size: 100% 250%;
+    mask-size: 100% 250%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: 0% 100%;
+    mask-position: 0% 100%;
+  }
+
+  html.js [data-reveal-mask="sweep-diag"]:not([data-reveal-done]) {
+    -webkit-mask-image: linear-gradient(135deg, #000 45%, transparent 55%);
+    mask-image: linear-gradient(135deg, #000 45%, transparent 55%);
+    -webkit-mask-size: 250% 250%;
+    mask-size: 250% 250%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: 100% 100%;
+    mask-position: 100% 100%;
+  }
+
+  html.js [data-reveal-mask="iris"]:not([data-reveal-done]) {
+    -webkit-mask-image: radial-gradient(
+      farthest-corner at clamp(0%, var(--rv-mx), 100%) clamp(0%, var(--rv-my), 100%),
+      #000 clamp(0%, var(--rv-mr), 100%),
+      transparent calc(clamp(0%, var(--rv-mr), 100%) + 18%)
+    );
+    mask-image: radial-gradient(
+      farthest-corner at clamp(0%, var(--rv-mx), 100%) clamp(0%, var(--rv-my), 100%),
+      #000 clamp(0%, var(--rv-mr), 100%),
+      transparent calc(clamp(0%, var(--rv-mr), 100%) + 18%)
+    );
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+
+  html.js [data-reveal-mask="moon"]:not([data-reveal-done]) {
+    -webkit-mask-image: radial-gradient(48% 48% at var(--rv-mx) 50%, transparent 96%, #000 100%);
+    mask-image: radial-gradient(48% 48% at var(--rv-mx) 50%, transparent 96%, #000 100%);
+  }
+}
+
+/* Halos: a pseudo-element ring, disc or orbit around an HTML host. The base
+   sizes come from --rv-ring-* vars anime writes on the host. */
+html.js [data-reveal-halo]:not([data-reveal-done]) {
+  position: relative;
+}
+
+html.js [data-reveal-halo]:not([data-reveal-done])::after {
+  content: "";
+  position: absolute;
+  inset: -14% -20%;
+  box-sizing: border-box;
+  max-inline-size: 140%;
+  max-block-size: 140%;
+  overflow: clip;
+  border-radius: 50%;
+  rotate: var(--rv-ring-r, -18deg);
+  scale: var(--rv-ring-s, 1);
+  opacity: var(--rv-ring-o, 0);
+  contain: paint;
+  pointer-events: none;
+}
+
+html.js [data-reveal-halo="ring"]:not([data-reveal-done])::after {
+  border: 1.5px solid rgba(var(--planet-rgb, 255, 255, 255), 0.85);
+}
+
+html.js [data-reveal-halo="orbit"]:not([data-reveal-done])::after {
+  inset: -22%;
+  border: 1px dashed rgba(var(--planet-rgb, 255, 255, 255), 0.8);
+}
+
+html.js [data-reveal-halo="disc"]:not([data-reveal-done])::after {
+  inset: -30%;
+  rotate: 0deg;
+  background: radial-gradient(
+    closest-side,
+    rgba(var(--planet-rgb, 255, 255, 255), 0.55),
+    rgba(var(--planet-rgb, 255, 255, 255), 0)
+  );
+}
+
+/* Strokes: SVG paths (pathLength="1" in markup) draw themselves; --rv-draw is
+   animated on the host and inherited here. */
+html.js [data-reveal-stroke]:not([data-reveal-done]) :is(path, line, polyline, circle, rect) {
+  stroke-dasharray: 1;
+  stroke-dashoffset: var(--rv-draw, 1);
+}
+
+/* Cards animate their box and content on separate layers; no CSS transition
+   may fight the timeline. */
+html.js [data-reveal="@card"]:not([data-reveal-done]) > * {
+  transition: none;
+}
+
+/* Ambient 1: card spotlight (ambient.ts sets --mx / --my while hovering) */
+/* isolation gives the glow its own stacking context: it paints above the host's
+   background and below its text (z-index -1), so it never covers content. */
+html.js [data-spotlight] {
+  position: relative;
+  isolation: isolate;
+}
+
+html.js [data-spotlight]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  border-radius: inherit;
+  contain: paint;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    260px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(var(--planet-rgb, 255, 255, 255), 0.12),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Hover lights the glow only on real hover devices, so a tap cannot leave it
+   stuck on. Touch gets a press glow that clears on release. */
+@media (any-hover: hover) and (any-pointer: fine) {
+  html.js:where(:not([data-input="touch"])) [data-spotlight]:hover::after {
+    opacity: 1;
+  }
+}
+
+/* Touch press glow, placed under the finger by ambient.ts; follows the input in use. */
+html.js[data-input="touch"] [data-spotlight]:active::after {
+  opacity: 0.6;
+}
+
+/* Ambient 2: a tiny star twinkles beside the section number once the
+   heading has played */
+html.js .section__num {
+  position: relative;
+}
+
+html.js .section__num::after {
+  content: "✦";
+  content: "✦" / "";
+  position: absolute;
+  top: -0.45em;
+  right: -0.7em;
+  font-size: 0.55em;
+  color: rgba(var(--planet-rgb, 255, 255, 255), 0.95);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.js [data-reveal-done] .section__num::after {
+    animation: rv-twinkle 7s ease-in-out 1.5s infinite;
+  }
+}
+
+/* Pause infinite twinkle when panel is hidden or inactive */
+[data-planet-panel][aria-hidden="true"] .section__num::after,
+[data-planet-panel]:not(.active):not([data-active-panel]) .section__num::after {
+  animation-play-state: paused;
+}
+
+@keyframes rv-twinkle {
+  0%,
+  18%,
+  100% {
+    opacity: 0;
+    scale: 0.5;
+  }
+  8% {
+    opacity: 0.95;
+    scale: 1;
+  }
+}
+
+/* =========================================================================
+   Gen2 Pseudo-element Rules Keyed on [data-reveal-fx]
+   ========================================================================= */
+
+/* Heading: ticker-underline & orbit-sweep (free h2::after slot) */
+html.js h2[data-reveal]:is([data-reveal-fx="ticker-underline"], [data-reveal-fx="orbit-sweep"]) {
+  position: relative;
+}
+/* No done gate: the rule must stay painted after finish() (the timeline ends at --rv-ux 1). */
+html.js
+  h2[data-reveal]:is([data-reveal-fx="ticker-underline"], [data-reveal-fx="orbit-sweep"])::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 2px;
+  background: rgba(var(--planet-rgb, 255, 255, 255), 0.85);
+  transform-origin: left center;
+  /* Registered --rv-* do not inherit; a pseudo-element must pull its host's value explicitly. */
+  --rv-ux: inherit;
+  scale: var(--rv-ux) 1;
+  pointer-events: none;
+}
+html.js h2[data-reveal-fx="ticker-underline"]::after {
+  height: 1px;
+}
+/* Resting value once the reveal is done and its inline --rv-ux has been reverted. */
+html.js
+  h2[data-reveal][data-reveal-done]:is(
+    [data-reveal-fx="ticker-underline"],
+    [data-reveal-fx="orbit-sweep"]
+  ) {
+  --rv-ux: 1;
+}
+
+/* Card: focus-lens-settle & edge-pulse-once (card ::before is free; ::after is spotlight) */
+html.js
+  [data-reveal="@card"]:is(
+    [data-reveal-fx="focus-lens-settle"],
+    [data-reveal-fx="edge-pulse-once"]
+  ) {
+  position: relative;
+}
+html.js
+  [data-reveal="@card"]:is(
+    [data-reveal-fx="focus-lens-settle"],
+    [data-reveal-fx="edge-pulse-once"]
+  ):not([data-reveal-done])::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  border: 1px solid rgba(var(--planet-rgb, 255, 255, 255), 0.85);
+  --rv-edge: inherit;
+  opacity: var(--rv-edge);
+  pointer-events: none;
+}
+
+/* Button: button-press-in & button-ripple-once (.btn::before is sheen, ::after is free) */
+html.js
+  .btn[data-reveal]:is([data-reveal-fx="button-press-in"], [data-reveal-fx="button-ripple-once"]) {
+  position: relative;
+}
+html.js .btn[data-reveal-fx="button-press-in"]:not([data-reveal-done])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 8px 24px rgba(var(--planet-rgb, 255, 255, 255), 0.4);
+  --rv-edge: inherit;
+  opacity: var(--rv-edge);
+  pointer-events: none;
+}
+html.js .btn[data-reveal-fx="button-ripple-once"]:not([data-reveal-done])::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 1.5px solid rgba(var(--planet-rgb, 255, 255, 255), 0.85);
+  --rv-s: inherit;
+  --rv-edge: inherit;
+  scale: var(--rv-s);
+  opacity: var(--rv-edge);
+  pointer-events: none;
+}
+
+/* =========================================================================
+   Accessibility & Media Overrides
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html.js [data-reveal] {
+    opacity: 1 !important;
+    translate: none !important;
+    scale: none !important;
+    rotate: none !important;
+    filter: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    clip-path: none !important;
+  }
+
+  /* Decorative parts (flare, orbit, lens) stay hidden at rest, so they are left alone. */
+  html.js
+    [data-reveal]
+    :is(
+      .rv-char,
+      .rv-word,
+      .rv-line,
+      li,
+      dt,
+      [data-reveal-part]:not([data-reveal-part="flare"], [data-reveal-deco])
+    ) {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  html.js [data-reveal-halo]::after,
+  html.js [data-spotlight]::after,
+  html.js .section__num::after,
+  html.js h2[data-reveal]::after,
+  html.js [data-reveal="@card"]::before,
+  html.js .btn[data-reveal]::after {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html.js [data-reveal]:not([data-reveal-done]),
+  html.js [data-reveal] :is(.rv-char, .rv-word, .rv-line, li, dt, [data-reveal-part]) {
+    filter: none !important;
+    text-shadow: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  html.js [data-reveal] {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    clip-path: none !important;
+    filter: none !important;
+    text-shadow: none !important;
+  }
+
+  html.js [data-reveal-halo]::after,
+  html.js [data-spotlight]::after {
+    display: none !important;
+  }
+
+  html.js
+    h2[data-reveal]:is([data-reveal-fx="ticker-underline"], [data-reveal-fx="orbit-sweep"])::after {
+    background: currentColor !important;
+  }
+
+  html.js
+    [data-reveal="@card"]:is(
+      [data-reveal-fx="focus-lens-settle"],
+      [data-reveal-fx="edge-pulse-once"]
+    ):not([data-reveal-done])::before,
+  html.js .btn[data-reveal-fx="button-ripple-once"]:not([data-reveal-done])::after {
+    border-color: currentColor !important;
+  }
+}
+
+@media (min-resolution: 192dpi) {
+  /* A zoomed page has less layout space even when its CSS viewport is unchanged. */
+  html.js [data-reveal-halo]:not([data-reveal-done])::after {
+    inset: -8%;
+    max-inline-size: 116%;
+    max-block-size: 116%;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Keep decorative layers inside their host; readable content remains unclipped. */
+  html.js [data-reveal-halo]:not([data-reveal-done])::after {
+    inset: -10%;
+    max-inline-size: 120%;
+    max-block-size: 120%;
+  }
+
+  html.js [data-spotlight]::after {
+    display: none;
+  }
+}
+
+@media (max-width: 480px), (max-height: 500px) and (orientation: landscape) {
+  /* Keep the animated custom-property translation inside the viewport. This is
+     a bound on the reveal's temporary motion only; completed elements retain
+     their component transforms and hover behavior. */
+  html.js [data-reveal]:not([data-reveal-done]) {
+    translate: clamp(-20vw, var(--rv-x), 20vw) clamp(-20vh, var(--rv-y), 20vh);
+    perspective: none !important;
+    transform-style: flat !important;
+  }
+
+  html.js [data-reveal-halo]:not([data-reveal-done]) {
+    /* Do not contain the host: paint containment would clip readable content. */
+    isolation: isolate;
+  }
+}
+
+/* ---------------------------------------------------------------
+   gen3 effects
+   --------------------------------------------------------------- */
+
+@media (min-width: 481px) and (any-hover: hover) and (any-pointer: fine) {
+  html.js [data-reveal-mask="moon"]:not([data-reveal-done]) {
+    -webkit-mask-image: radial-gradient(80% 80% at var(--rv-mx) 50%, #000 96%, transparent 100%);
+    mask-image: radial-gradient(80% 80% at var(--rv-mx) 50%, #000 96%, transparent 100%);
+  }
+}
+
+/* Increase Contrast: the card spotlight glow adds no information, so it goes. */
+@media (prefers-contrast: more) {
+  html.js [data-spotlight]::after {
+    display: none;
+  }
+}

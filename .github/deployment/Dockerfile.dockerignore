@@ -1,0 +1,10 @@
+# Allowlist: exclude everything, then re-include only what the static build needs.
+*
+
+!package.json
+!package-lock.json
+!astro.config.mjs
+!tsconfig.json
+!src/
+!public/
+!.github/deployment/sws.toml

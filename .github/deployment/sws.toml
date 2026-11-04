@@ -1,0 +1,41 @@
+# static-web-server config — https://static-web-server.net/configuration/config-file/
+[general]
+host = "0.0.0.0"
+port = 8080
+root = "/public"
+page404 = "/public/404.html"
+log-level = "warn"
+
+# Serve the pre-compressed .br/.gz files generated at build time; no runtime compression.
+compression = false
+compression-static = true
+
+# Cache policy is defined explicitly below.
+cache-control-headers = false
+security-headers = true
+health = true
+directory-listing = false
+ignore-hidden-files = true
+redirect-trailing-slash = true
+
+[advanced]
+
+# Baseline for every response (HTML included): always revalidate so deploys show up immediately.
+[[advanced.headers]]
+source = "**"
+[advanced.headers.headers]
+Cache-Control = "no-cache"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Astro's content-hashed bundles never change.
+[[advanced.headers]]
+source = "/_astro/**"
+[advanced.headers.headers]
+Cache-Control = "public, max-age=31536000, immutable"
+
+# Unhashed static assets from public/.
+[[advanced.headers]]
+source = "**/*.{png,jpg,jpeg,webp,avif,gif,svg,ico,woff,woff2}"
+[advanced.headers.headers]
+Cache-Control = "public, max-age=604800"

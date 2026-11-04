@@ -1,0 +1,395 @@
+/* =========================================================================
+   Panel System: Isolated Tab-Based Panels with Internal Scrolling
+   ========================================================================= */
+
+html.js main {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+html.js .footer--global {
+  display: none;
+}
+
+html:not(.js) .footer--panel {
+  display: none;
+}
+
+html.js [data-planet-panel] {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.4s ease,
+    visibility 0.4s ease;
+  pointer-events: none;
+  padding-top: calc(var(--nav-height) + var(--space-md));
+  padding-bottom: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+html.js [data-planet-panel]::-webkit-scrollbar {
+  width: 6px;
+}
+
+html.js [data-planet-panel]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.js [data-planet-panel]::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+}
+
+html.js [data-planet-panel]::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* When a panel is visible */
+html.js [data-planet-panel].is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+html.js .section[data-planet-panel] {
+  min-height: 100%;
+  padding-top: calc(var(--nav-height) + var(--space-md));
+  padding-bottom: 0;
+  padding-inline: 0;
+  width: 100%;
+}
+
+/* Panels have container centered vertically when content is short, and start from top when tall/scrollable */
+html.js [data-planet-panel] > .container {
+  margin-block: auto; /* Not in global .container; vertical centering is panel-only */
+}
+
+html.js .projects[data-planet-panel] > .container {
+  margin-top: 0; /* Projects panel starts at top, overriding the generic centering above */
+  margin-bottom: auto;
+}
+
+/* =========================================================================
+   Orbit Mode (3D Space Focus)
+   ========================================================================= */
+html.js body[data-mode="orbit"] #solar-canvas {
+  pointer-events: auto;
+}
+
+html.js body[data-mode="orbit"] [data-planet-panel].is-visible {
+  pointer-events: none;
+}
+
+html.js body[data-mode="orbit"] [data-planet-panel].is-visible a,
+html.js body[data-mode="orbit"] [data-planet-panel].is-visible button,
+html.js body[data-mode="orbit"] [data-planet-panel].is-visible .btn,
+html.js body[data-mode="orbit"] [data-planet-panel].is-visible .card {
+  pointer-events: auto;
+}
+
+/* =========================================================================
+   Content / Reading Mode (Page Interaction Focus)
+   ========================================================================= */
+html.js body[data-mode="reading"] #solar-canvas {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+html.js body[data-mode="reading"] [data-planet-panel].is-visible {
+  pointer-events: auto;
+}
+
+/* =========================================================================
+   Mode Focus Dimming
+   Orbit: the scene is the subject — panel content steps back, glass
+   surfaces turn see-through and solid pieces (avatar, images, headings)
+   fade so the planets read through them.
+   Reading: the text is the subject — the scene dims behind it and text
+   renders at full strength with extra contrast.
+   ========================================================================= */
+html.js body {
+  --mode-orbit-content-opacity: 0.82;
+  --mode-orbit-solid-opacity: 0.5;
+  --mode-reading-canvas-opacity: 0.4;
+  --mode-transition: 0.6s var(--ease-apple);
+}
+
+html.js #solar-canvas {
+  transition: opacity var(--mode-transition);
+}
+
+/* Panel content wrapper: the panel itself owns the .is-visible opacity
+   toggle, so mode dimming lives one level down to avoid fighting it. */
+html.js [data-planet-panel] > .container {
+  transition: opacity var(--mode-transition);
+}
+
+/* --- Orbit -------------------------------------------------------------- */
+html.js body[data-mode="orbit"] #solar-canvas {
+  opacity: 1;
+}
+
+html.js body[data-mode="orbit"] [data-planet-panel] > .container {
+  opacity: var(--mode-orbit-content-opacity);
+}
+
+/* Scoped to main so the nav and 3D controls keep their normal glass. */
+html.js body[data-mode="orbit"] main {
+  --glass-bg:
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%),
+    rgba(8, 8, 12, 0.06);
+  --glass-bg-subtle:
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%),
+    rgba(8, 8, 12, 0.04);
+  --glass-bg-elevated:
+    radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 100%),
+    rgba(8, 8, 12, 0.1);
+  --glass-blur: blur(2px) saturate(120%);
+  --glass-blur-sm: blur(1px) saturate(110%);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-border-subtle: 1px solid rgba(255, 255, 255, 0.05);
+  --glass-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  --glass-shadow-sm: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+html.js body[data-mode="orbit"] main :is(img, picture, svg:not(.btn svg, a svg, button svg)),
+html.js body[data-mode="orbit"] main :is(h1, h2):not(.hero__title, .hero__subtitle) {
+  opacity: var(--mode-orbit-solid-opacity);
+  transition: opacity var(--mode-transition);
+}
+
+/* Hero title/subtitle run an entrance fade; only dim once it has finished
+   so the entrance timing is untouched. !important beats Hero's
+   reduced-motion `opacity: 1 !important` for this mode only. */
+html.js body[data-mode="orbit"] main .hero.hero--entered :is(.hero__title, .hero__subtitle) {
+  opacity: var(--mode-orbit-solid-opacity) !important;
+  transition: opacity var(--mode-transition);
+  transition-delay: 0s;
+}
+
+/* About's cards hardcode an opaque background instead of
+   using the glass tokens. */
+html.js body[data-mode="orbit"] main :is(.about__intro, .about__block, .about__grid > div) {
+  background: var(--glass-bg);
+}
+
+html.js body[data-mode="orbit"] main :is(a, button):focus-visible :is(img, svg) {
+  opacity: 1;
+}
+
+/* --- Reading ------------------------------------------------------------ */
+/* Only on planet sections, and only after the camera has arrived
+   (data-active-planet, the same attached-section state that drives the chrome
+   theme), so every flight between sections plays at full brightness; the hero
+   overview keeps the full scene. */
+html.js[data-active-planet]:is(.startup-ready, .startup-seen)
+  body[data-mode="reading"]
+  #solar-canvas {
+  opacity: var(--mode-reading-canvas-opacity);
+}
+
+html.js body[data-mode="reading"] [data-planet-panel] > .container {
+  opacity: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+html.js body[data-mode="reading"] main {
+  --color-text-muted: #b4b4b4;
+  --glass-bg:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    rgba(8, 8, 12, 0.4);
+  --glass-bg-subtle:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(255, 255, 255, 0.06) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    rgba(8, 8, 12, 0.32);
+  --glass-bg-elevated:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    ),
+    rgba(8, 8, 12, 0.5);
+}
+
+/* Gradient text is painted through a transparent fill, so a shadow would
+   show through it and muddy the letters. */
+html.js body[data-mode="reading"] main .hero__title {
+  text-shadow: none;
+}
+
+/* About's cards tint body copy with a translucent white. */
+html.js
+  body[data-mode="reading"]
+  main
+  :is(.about__text p, .about__tagline, .about__name span, .about__timeline li) {
+  color: var(--color-text-muted);
+}
+
+/* Text renders at full strength: undo decorative fades on body copy. */
+html.js
+  body[data-mode="reading"]
+  main
+  :is(.contact__text, .filter-pill__icon-reset, .filter-pill__count, .filter-pill__badge) {
+  opacity: 1;
+}
+
+/* =========================================================================
+   Planet Section Theming
+   solar-system-ui.ts marks each planet section with data-planet-theme and
+   inline --planet-color / --planet-rgb / --planet-text from bodies.ts
+   (via planet-theme.ts). The hero (overview)
+   is never marked and keeps the neutral palette. Not gated on html.js so the
+   stacked no-WebGL fallback keeps its colors too.
+   ========================================================================= */
+
+/* Bright text (titles, inline links, highlighted words) takes the planet's
+   readable text color (--planet-text, lifted toward white in planet-theme.ts).
+   Normal body copy keeps its usual palette. */
+main
+  [data-planet-theme]
+  :is(
+    .section__num,
+    .about__name,
+    .about__subheading,
+    .about__text a,
+    .about__greeting-word,
+    .about__year,
+    .card__title,
+    .more__title,
+    .more__group-title,
+    .contact__label
+  ) {
+  color: var(--planet-text);
+}
+
+/* Planet glow, declared where the inline --planet-rgb lives so var() resolves
+   to the section's color (on :root it would resolve to the white default). */
+[data-planet-theme] {
+  --planet-border-hover: rgba(var(--planet-rgb), 0.55);
+  --planet-glow:
+    inset 0 1px 0 0 rgba(var(--planet-rgb), 0.35), 0 0 22px 0 rgba(var(--planet-rgb), 0.22),
+    0 12px 36px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* Boxes that are not .surface-card / .surface-chip keep their own transition here. */
+[data-planet-theme] :is(.about__banner, .about__loves li, .more__chips li) {
+  transition:
+    transform var(--anim-duration-hover) var(--ease-apple),
+    background var(--anim-duration-hover) var(--ease-apple),
+    border-color var(--anim-duration-hover) var(--ease-apple),
+    box-shadow var(--anim-duration-hover) var(--ease-apple);
+}
+
+/* Hovering any box in a planet section lights it in that planet's color.
+   The leading `main` lifts specificity above the components' scoped
+   `.x:hover[data-astro-cid]` rules. Only color properties are set here, never
+   transform, so the shared lift from global.css survives. Hover is gated to
+   real hover devices; focus-visible always lights the box for keyboard users. */
+@media (any-hover: hover) and (any-pointer: fine) {
+  :where(html:not([data-input="touch"]))
+    main
+    [data-planet-theme]
+    :is(
+      .btn,
+      .card,
+      .more__card,
+      .contact__card,
+      .about__banner,
+      .about__loves li,
+      .more__chips li,
+      .surface-card,
+      .surface-chip,
+      .filter-pill,
+      .tag-btn,
+      .card__link
+    ):hover {
+    background:
+      radial-gradient(
+        130% 100% at 50% 0%,
+        rgba(var(--planet-rgb), 0.16) 0%,
+        rgba(var(--planet-rgb), 0.03) 100%
+      ),
+      rgba(8, 8, 12, 0.42);
+    border-color: var(--planet-border-hover);
+    box-shadow: var(--planet-glow);
+  }
+}
+
+main
+  [data-planet-theme]
+  :is(
+    .btn,
+    .card,
+    .more__card,
+    .contact__card,
+    .about__banner,
+    .about__loves li,
+    .more__chips li,
+    .surface-card,
+    .surface-chip,
+    .filter-pill,
+    .tag-btn,
+    .card__link
+  ):focus-visible {
+  background:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(var(--planet-rgb), 0.16) 0%,
+      rgba(var(--planet-rgb), 0.03) 100%
+    ),
+    rgba(8, 8, 12, 0.42);
+  border-color: var(--planet-border-hover);
+  box-shadow: var(--planet-glow);
+}
+
+/* Increase Contrast: the planet glow becomes a crisp outline. */
+@media (prefers-contrast: more) {
+  [data-planet-theme] {
+    --planet-border-hover: rgba(var(--planet-rgb), 1);
+    --planet-glow: inset 0 0 0 1px rgba(var(--planet-rgb), 0.8);
+  }
+}
+
+/* =========================================================================
+   Mode Focus Responsive Overrides
+   Media-gated pieces of the orbit mode. They live outside the mode-dimming
+   section so the dimming values stay independent of viewport and input.
+   ========================================================================= */
+/* Pointing at something brings it back into focus. Hover is gated to real hover
+   devices so a tap does not leave the portrait or icon lit. Keyboard focus always lights it. */
+@media (any-hover: hover) and (any-pointer: fine) {
+  html.js:where(:not([data-input="touch"])) body[data-mode="orbit"] main .about__portrait:hover,
+  html.js:where(:not([data-input="touch"]))
+    body[data-mode="orbit"]
+    main
+    :is(a, button):hover
+    :is(img, svg) {
+    opacity: 1;
+  }
+}
+
+/* The orbit main scope sets its own blur, which would outrank the global Reduce
+   Transparency token, so it drops the blur here too. */
+@media (prefers-reduced-transparency: reduce) {
+  html.js body[data-mode="orbit"] main {
+    --glass-blur: none;
+    --glass-blur-sm: none;
+  }
+}

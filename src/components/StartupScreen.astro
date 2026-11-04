@@ -1,0 +1,736 @@
+---
+---
+
+<!-- prettier-ignore -->
+<div id="startup-screen" class="startup-screen" role="status" aria-live="polite" aria-label="Initializing website">
+  <!-- The master field owns the only circular opening edge. -->
+  <div class="aperture-field" data-aperture="master" aria-hidden="true"></div>
+  <!-- The sun's glare: a cross of beams and a bloom at the centre, driven by the controller. -->
+  <div class="sun-glare" data-glare aria-hidden="true">
+    <span class="sun-glare-ray sun-glare-ray--x"></span>
+    <span class="sun-glare-ray sun-glare-ray--y"></span>
+    <span class="sun-glare-ray sun-glare-ray--d"></span>
+    <span class="sun-glare-ray sun-glare-ray--a"></span>
+    <span class="sun-glare-streak"></span>
+    <span class="sun-glare-spikes"></span>
+    <span class="sun-glare-ghost"></span>
+    <span class="sun-glare-bloom"></span>
+    <span class="sun-glare-core"></span>
+  </div>
+
+  <div id="startup-welcome" class="startup-welcome" aria-hidden="true">
+    <p class="welcome-eyebrow" data-welcome="eyebrow">WELCOME TO</p>
+    <p class="welcome-title" data-welcome="title">Đ-Dev's Space</p>
+    <p class="welcome-sub" data-welcome="sub">The Creative Dreamers</p>
+  </div>
+  <!-- The one string screen readers get; the split welcome above is aria-hidden. -->
+  <span class="sr-only">WELCOME TO Đ-Dev's Space The Creative Dreamers</span>
+</div>
+
+<script>
+  import { StartupController } from "../scripts/startup-controller";
+  import {
+    lastRevealProgressMs,
+    onSceneReady,
+    REVEAL_STALL_MS
+  } from "../scripts/startup/reveal-gate";
+  import { announceIntroStarted } from "../scripts/startup/intro-signal";
+  import { readTierEnv, resolveTier } from "../scripts/reveal/tiers";
+
+  /**
+   * Failure guard before any texture has settled. Counted from construction, so it must
+   * cover the scene's own lazy load on a slow network; once a texture settles the
+   * tighter REVEAL_STALL_MS applies.
+   */
+  const FIRST_PROGRESS_GUARD_MS = 6000;
+
+  function initStartup(): void {
+    if (StartupController.hasSeenStartup()) {
+      const el = document.getElementById("startup-screen");
+      if (el) {
+        el.hidden = true;
+        el.style.display = "none";
+      }
+      document.documentElement.classList.add("startup-ready");
+      // No intro runs on this path, so the scene is released without waiting for one.
+      announceIntroStarted();
+      document.dispatchEvent(new CustomEvent("startup:complete"));
+      return;
+    }
+
+    const container = document.getElementById("startup-screen");
+    const welcomeEl = document.getElementById("startup-welcome");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Phones and other low-effects environments get the lite aperture (no blur or blend layers).
+    const lowFx = resolveTier(readTierEnv()).lowFx;
+
+    // No fixed hold. The aperture opens as soon as the scene can be shown (the Sun
+    // texture is drawn) and the welcome intro has landed; after that the reveal is
+    // paced by texture progress inside the controller.
+    const controller = new StartupController({
+      container,
+      welcomeEl,
+      reducedMotion,
+      lowFx,
+      sunRadiusPx: 72
+    });
+
+    if (reducedMotion) {
+      controller.startExpansion();
+      return;
+    }
+
+    let started = false;
+    let guardTimer: ReturnType<typeof setTimeout> | undefined;
+    const startedAt = performance.now();
+
+    function start(): void {
+      if (started) return;
+      started = true;
+      clearTimeout(guardTimer);
+      controller.startExpansion();
+    }
+
+    onSceneReady(start);
+
+    // Failure guard only: if the scene never reports ready and no texture has settled
+    // for REVEAL_STALL_MS (dead network, script error), open anyway rather than trap
+    // the visitor. Any texture progress pushes the guard back.
+    function armGuard(delay: number): void {
+      guardTimer = setTimeout(() => {
+        if (started) return;
+        const progress = lastRevealProgressMs();
+        const limit = progress === null ? FIRST_PROGRESS_GUARD_MS : REVEAL_STALL_MS;
+        const since = Math.max(progress ?? startedAt, startedAt);
+        const idle = performance.now() - since;
+        if (idle >= limit) start();
+        else armGuard(limit - idle);
+      }, delay);
+    }
+    if (!started) armGuard(FIRST_PROGRESS_GUARD_MS);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initStartup);
+  } else {
+    initStartup();
+  }
+</script>
+
+<style>
+  @property --aperture-radius {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 0px;
+  }
+  @property --aperture-corona {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 0px;
+  }
+  @property --aperture-feather {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 14px;
+  }
+  @property --aperture-edge-alpha {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+  }
+  @property --aperture-void-alpha {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 1;
+  }
+  @property --aperture-halo-alpha {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+  }
+  @property --aperture-core-alpha {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+  }
+  @property --aperture-bloom {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 24px;
+  }
+  @property --aperture-heat {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --aperture-pulse {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 1;
+  }
+  /* Read by the streamer pseudo-elements, so these inherit. */
+  @property --aperture-ray-alpha {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --aperture-ray-angle {
+    syntax: "<angle>";
+    inherits: true;
+    initial-value: 0deg;
+  }
+  @property --aperture-starlight {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+  }
+  /* The sun's glare: the wrapper sets these, its beams and bloom read them. */
+  @property --glare-alpha {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+  }
+  @property --glare-len {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+  }
+  @property --glare-thick {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 1;
+  }
+  @property --glare-rotate {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+  }
+  @property --glare-bloom {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 1;
+  }
+
+  .startup-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    isolation: isolate;
+    background: #030306;
+    pointer-events: auto;
+  }
+
+  .startup-screen.is-opening {
+    background: transparent;
+  }
+
+  :global(html.startup-seen) .startup-screen,
+  :global(html:not(.js)) .startup-screen {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /*
+   * The field is the only owner of the opening circle. Its transparent centre
+   * reveals the page and its radial gradient stack keeps the deep void outside
+   * while rendering a realistic solar photosphere/chromosphere/corona rim and
+   * subtle deep-space starlight. Anime.js drives the custom properties below.
+   */
+  .aperture-field {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    contain: strict;
+    --aperture-radius: 0px;
+    --aperture-corona: 0px;
+    --aperture-feather: 14px;
+    --aperture-edge-alpha: 0;
+    --aperture-void-alpha: 1;
+    --aperture-halo-alpha: 0;
+    --aperture-core-alpha: 0;
+    --aperture-bloom: 24px;
+    --aperture-starlight: 0;
+    --aperture-heat: 0;
+    --aperture-pulse: 1;
+    --aperture-ray-alpha: 0;
+    --aperture-ray-angle: 0deg;
+    /* The hold pulse breathes the corona fully and the rim lightly. */
+    --edge: calc(var(--aperture-edge-alpha) * (0.55 + 0.45 * var(--aperture-pulse)));
+    --halo: calc(var(--aperture-halo-alpha) * var(--aperture-pulse));
+    /* Heat 0 to 1 cools the wavefront from white-gold through amber to crimson. */
+    --heat: var(--aperture-heat);
+    background:
+      /* 1. Central singularity pre-ignition & core flash bloom */
+      radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 252, 232, calc(var(--aperture-core-alpha) * 0.95)) 0px,
+        rgba(255, 240, 196, calc(var(--aperture-core-alpha) * 0.78))
+          calc(var(--aperture-bloom) * 0.16),
+        rgba(255, 214, 102, calc(var(--aperture-core-alpha) * 0.55))
+          calc(var(--aperture-bloom) * 0.38),
+        rgba(255, 107, 13, calc(var(--aperture-core-alpha) * 0.22))
+          calc(var(--aperture-bloom) * 0.82),
+        transparent var(--aperture-bloom)
+      ),
+      /* 2. Primary aperture hole + multi-band solar photosphere, chromosphere & corona.
+         The rim cools with --heat as the wavefront travels and breathes with --aperture-pulse. */ radial-gradient(
+          circle at 50% 50%,
+          transparent 0 max(0px, calc(var(--aperture-radius) - var(--aperture-corona) * 0.72)),
+          rgba(
+              255,
+              calc(250 - 34 * var(--heat)),
+              calc(220 - 120 * var(--heat)),
+              calc(var(--edge) * 0.24)
+            )
+            max(0px, calc(var(--aperture-radius) - var(--aperture-corona) * 0.32)),
+          rgba(255, calc(244 - 50 * var(--heat)), calc(188 - 124 * var(--heat)), var(--edge))
+            max(0px, calc(var(--aperture-radius) - var(--aperture-corona) * 0.08)),
+          rgba(
+              255,
+              calc(184 - 82 * var(--heat)),
+              calc(77 - 55 * var(--heat)),
+              calc(var(--edge) * 0.86)
+            )
+            var(--aperture-radius),
+          rgba(
+              calc(255 - 30 * var(--heat)),
+              calc(107 - 60 * var(--heat)),
+              calc(13 + 8 * var(--heat)),
+              calc(var(--halo) * 0.58)
+            )
+            calc(var(--aperture-radius) + var(--aperture-feather) * 0.36),
+          rgba(
+              calc(140 - 22 * var(--heat)),
+              calc(28 - 12 * var(--heat)),
+              calc(14 + 22 * var(--heat)),
+              calc(var(--halo) * 0.34)
+            )
+            calc(var(--aperture-radius) + var(--aperture-feather) * 0.78),
+          rgba(16, 8, 18, calc(var(--aperture-void-alpha) * 0.95))
+            calc(var(--aperture-radius) + var(--aperture-feather) * 1.15),
+          #030306 calc(var(--aperture-radius) + var(--aperture-feather) * 1.55) 100%
+        ),
+      /* 3. Subtle galactic dust & starlight depth outside the aperture */
+      radial-gradient(
+          ellipse 68% 46% at 50% 50%,
+          rgba(254, 215, 102, calc(var(--aperture-starlight) * 0.07)) 0%,
+          rgba(56, 189, 248, calc(var(--aperture-starlight) * 0.035)) 48%,
+          transparent 80%
+        );
+    will-change: background;
+  }
+
+  /*
+   * Coronal streamers: two counter-turning conic ray sets interfere into irregular,
+   * organic streamers. The mask confines them to the corona just outside the rim, so
+   * they ride the wavefront outward and never draw a second circular edge.
+   */
+  .aperture-field::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-conic-gradient(
+        from var(--aperture-ray-angle) at 50% 50%,
+        rgba(255, 226, 150, 0) 0deg,
+        rgba(
+            255,
+            calc(226 - 70 * var(--aperture-heat)),
+            calc(150 - 100 * var(--aperture-heat)),
+            0.5
+          )
+          2.4deg,
+        rgba(255, 226, 150, 0) 5.5deg,
+        rgba(255, 226, 150, 0) 11deg
+      ),
+      repeating-conic-gradient(
+        from calc(7deg - var(--aperture-ray-angle) * 0.6) at 50% 50%,
+        rgba(255, 150, 60, 0) 0deg,
+        rgba(255, calc(150 - 60 * var(--aperture-heat)), 60, 0.34) 3.6deg,
+        rgba(255, 150, 60, 0) 8deg,
+        rgba(255, 150, 60, 0) 17deg
+      );
+    -webkit-mask-image: radial-gradient(
+      circle at 50% 50%,
+      transparent 0 calc(var(--aperture-radius) * 0.97),
+      #000 calc(var(--aperture-radius) + var(--aperture-corona) * 0.3),
+      rgba(0, 0, 0, 0.32) calc(var(--aperture-radius) + var(--aperture-corona) * 1.5),
+      transparent calc(var(--aperture-radius) * 1.2 + var(--aperture-corona) * 3)
+    );
+    mask-image: radial-gradient(
+      circle at 50% 50%,
+      transparent 0 calc(var(--aperture-radius) * 0.97),
+      #000 calc(var(--aperture-radius) + var(--aperture-corona) * 0.3),
+      rgba(0, 0, 0, 0.32) calc(var(--aperture-radius) + var(--aperture-corona) * 1.5),
+      transparent calc(var(--aperture-radius) * 1.2 + var(--aperture-corona) * 3)
+    );
+    opacity: calc(var(--aperture-ray-alpha) * var(--aperture-pulse));
+    mix-blend-mode: screen;
+    filter: blur(1.2px);
+  }
+  /*
+   * The sun's glare: a thick cross of soft beams with a bloom at the centre of the page, over
+   * the aperture. Each beam is a lens of light, brightest down its middle and falling off softly
+   * across its width and along its length to transparent tips. Only transform, opacity and the
+   * registered custom properties move, so the glare stays cheap to animate.
+   */
+  .sun-glare {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 2;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    opacity: var(--glare-alpha);
+    mix-blend-mode: screen;
+    transform: rotate(var(--glare-rotate));
+    --glare-alpha: 0;
+    --glare-len: 0;
+    --glare-thick: 1;
+    --glare-rotate: 0deg;
+    --glare-bloom: 1;
+  }
+
+  .sun-glare-ray,
+  .sun-glare-streak,
+  .sun-glare-spikes,
+  .sun-glare-ghost,
+  .sun-glare-bloom,
+  .sun-glare-core {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+  }
+
+  /* A beam rests 150vmax long and 16px thick; its transform sets the length and thickness. */
+  .sun-glare-ray {
+    --glare-angle: 0deg;
+    --glare-reach: 1;
+    --glare-girth: 1;
+    width: 150vmax;
+    height: 16px;
+    background: radial-gradient(
+      closest-side,
+      rgba(255, 253, 244, 1) 0%,
+      rgba(255, 232, 170, 0.9) 10%,
+      rgba(255, 186, 96, 0.42) 34%,
+      rgba(255, 140, 50, 0.12) 68%,
+      rgba(255, 120, 40, 0) 100%
+    );
+    transform: translate(-50%, -50%) rotate(var(--glare-angle))
+      scale(
+        calc(var(--glare-len) * var(--glare-reach)),
+        calc(var(--glare-thick) * var(--glare-girth))
+      );
+  }
+  .sun-glare-ray--x {
+    --glare-angle: 0deg;
+    --glare-reach: 1;
+    --glare-girth: 1;
+  }
+  .sun-glare-ray--y {
+    --glare-angle: 90deg;
+    --glare-reach: 0.8;
+    --glare-girth: 0.9;
+  }
+  /* Faint diagonal spikes, shorter and thinner than the cross. */
+  .sun-glare-ray--d,
+  .sun-glare-ray--a {
+    --glare-reach: 0.34;
+    --glare-girth: 0.55;
+    opacity: 0.5;
+  }
+  .sun-glare-ray--d {
+    --glare-angle: 45deg;
+  }
+  .sun-glare-ray--a {
+    --glare-angle: -45deg;
+  }
+
+  /*
+   * Anamorphic streak: a long, very thin line of light along the horizontal beam, as a
+   * cinema lens draws it. White-hot at the centre, warm through its body, with a faint cool
+   * tint only at the far tails.
+   */
+  .sun-glare-streak {
+    width: 150vmax;
+    height: 6px;
+    background: radial-gradient(
+      closest-side,
+      rgba(255, 255, 252, 0.95) 0%,
+      rgba(255, 238, 196, 0.7) 8%,
+      rgba(255, 204, 140, 0.32) 30%,
+      rgba(236, 222, 214, 0.12) 62%,
+      rgba(170, 205, 255, 0.06) 84%,
+      rgba(170, 205, 255, 0) 100%
+    );
+    transform: translate(-50%, -50%)
+      scale(calc(var(--glare-len) * 1.18), calc(0.45 + var(--glare-thick) * 0.2));
+  }
+
+  /*
+   * Fine diffraction spikes: twelve hair-thin rays between the main cross, faded out
+   * radially so they read as the aperture's starburst and never as a hard edge.
+   */
+  .sun-glare-spikes {
+    width: 520px;
+    height: 520px;
+    border-radius: 50%;
+    background: repeating-conic-gradient(
+      from 15deg at 50% 50%,
+      rgba(255, 236, 190, 0.55) 0deg,
+      rgba(255, 214, 150, 0) 0.7deg,
+      rgba(255, 214, 150, 0) 29.3deg,
+      rgba(255, 236, 190, 0.55) 30deg
+    );
+    -webkit-mask-image: radial-gradient(
+      circle closest-side,
+      #000 0%,
+      rgba(0, 0, 0, 0.45) 26%,
+      rgba(0, 0, 0, 0.12) 60%,
+      transparent 100%
+    );
+    mask-image: radial-gradient(
+      circle closest-side,
+      #000 0%,
+      rgba(0, 0, 0, 0.45) 26%,
+      rgba(0, 0, 0, 0.12) 60%,
+      transparent 100%
+    );
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(calc(var(--glare-bloom) * 0.5 + var(--glare-len) * 0.9));
+  }
+
+  /*
+   * Lens ghost: a faint halo ring around the bloom, warm on its inner edge and a breath of
+   * cool on its outer edge, like the chromatic ring of real glass.
+   */
+  .sun-glare-ghost {
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle closest-side,
+      rgba(255, 200, 120, 0) 0%,
+      rgba(255, 200, 120, 0) 66%,
+      rgba(255, 196, 120, 0.07) 76%,
+      rgba(255, 232, 200, 0.09) 81%,
+      rgba(160, 200, 255, 0.06) 87%,
+      rgba(160, 200, 255, 0) 94%
+    );
+    transform: translate(-50%, -50%) scale(var(--glare-bloom));
+  }
+
+  /* The soft round bloom that the beams cross through, with a faint cool fringe at its edge. */
+  .sun-glare-bloom {
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle closest-side,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 244, 214, 0.92) 8%,
+      rgba(255, 236, 170, 0.85) 16%,
+      rgba(255, 196, 104, 0.5) 28%,
+      rgba(255, 170, 70, 0.3) 42%,
+      rgba(255, 128, 44, 0.12) 64%,
+      rgba(190, 200, 255, 0.04) 84%,
+      rgba(255, 120, 40, 0) 100%
+    );
+    transform: translate(-50%, -50%) scale(var(--glare-bloom));
+  }
+
+  /*
+   * The photosphere: a small white-hot disc with limb darkening (brightest at the centre,
+   * warmer and dimmer toward the limb), wrapped in a thin rose-orange chromosphere.
+   */
+  .sun-glare-core {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle closest-side,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 252, 240, 1) 34%,
+      rgba(255, 240, 206, 0.96) 58%,
+      rgba(255, 216, 150, 0.9) 74%,
+      rgba(255, 150, 80, 0.62) 84%,
+      rgba(255, 96, 64, 0.3) 91%,
+      rgba(255, 90, 60, 0) 100%
+    );
+    transform: translate(-50%, -50%) scale(var(--glare-bloom));
+  }
+
+  .startup-welcome {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    text-align: center;
+    pointer-events: none;
+    padding: 1.5rem;
+  }
+
+  /* Resting text is immediately readable; Anime.js owns ambient wave and dissolve. */
+  .welcome-eyebrow {
+    margin: 0;
+    color: rgba(248, 250, 252, 0.76);
+    font-family: var(--font-mono);
+    font-size: clamp(0.75rem, 1.5vw, 0.85rem);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    opacity: 1;
+    transform: none;
+    /* A filter, not text-shadow: the line mask clips shadows, but not a filter on the box. */
+    filter: drop-shadow(0px 0px 20px rgba(254, 215, 102, 0.28));
+  }
+
+  .welcome-title {
+    margin: 0;
+    padding-bottom: 0.08em;
+    color: var(--color-text);
+    background-image:
+      linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.92) 50%, transparent 65%),
+      linear-gradient(135deg, #ffffff 12%, #fffbeb 34%, #fef08a 58%, #f6ad55 82%, #ff6b0d 100%);
+    background-size:
+      240% 100%,
+      100% 100%;
+    background-position:
+      120% 0%,
+      0% 0%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: clamp(1.9rem, 6.2vw, 3.25rem);
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: 0.06em;
+    opacity: 1;
+    transform: none;
+    filter: blur(0px) drop-shadow(0px 0px 18px rgba(254, 215, 102, 0.5));
+  }
+
+  .welcome-sub {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.8);
+    font-family: var(--font-mono);
+    font-size: clamp(0.82rem, 1.6vw, 0.92rem);
+    letter-spacing: 0.14em;
+    opacity: 1;
+    transform: none;
+    filter: drop-shadow(0px 0px 16px rgba(255, 255, 255, 0.18));
+  }
+
+  /*
+   * The server-rendered text stays hidden until the controller primes it. Priming sets inline
+   * opacity 0 in the same task that lifts is-intro-live and does not wait for fonts, so the
+   * failsafe (shown after 4s if the script never runs) can only expose the static CSS text,
+   * never a half-primed or fallback-font frame.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js) .startup-welcome:not(.is-intro-live) {
+      visibility: hidden;
+      animation: welcome-failsafe 0s 4s forwards;
+    }
+    @keyframes welcome-failsafe {
+      to {
+        visibility: visible;
+      }
+    }
+  }
+
+  .startup-welcome.is-fading-out {
+    opacity: 0;
+    transition: opacity 480ms ease;
+  }
+
+  .startup-welcome :global(.startup-char) {
+    display: inline-block;
+    will-change: transform, opacity, filter;
+  }
+
+  /*
+   * Low-effects tier (set by the controller): the full-viewport aperture drops its blur and
+   * screen blend and its static background hint, the resting title and lines drop their
+   * drop-shadow filters, and glyphs stop holding compositor layers outside the intro.
+   */
+  .startup-screen[data-startup-fx="lite"] .aperture-field {
+    will-change: auto;
+  }
+
+  .startup-screen[data-startup-fx="lite"] .aperture-field::before {
+    mix-blend-mode: normal;
+    filter: none;
+  }
+
+  .startup-screen[data-startup-fx="lite"] .welcome-eyebrow,
+  .startup-screen[data-startup-fx="lite"] .welcome-title,
+  .startup-screen[data-startup-fx="lite"] .welcome-sub {
+    filter: none;
+  }
+
+  .startup-screen[data-startup-fx="lite"] .startup-welcome :global(.startup-char) {
+    will-change: auto;
+  }
+
+  /* Each line is its own mask: the padding keeps Đ and descenders inside the box. */
+  .welcome-eyebrow,
+  .welcome-title,
+  .welcome-sub {
+    overflow: hidden;
+    padding-block: 0.12em;
+    line-height: 1.2;
+    min-height: 1.2em;
+    perspective: 800px;
+  }
+
+  /* The masks only serve the intro's unroll: the dissolve flies embers and the title's
+     line of light past them into the centre. */
+  .startup-welcome.is-dissolving .welcome-eyebrow,
+  .startup-welcome.is-dissolving .welcome-title,
+  .startup-welcome.is-dissolving .welcome-sub {
+    overflow: visible;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sun-glare {
+      display: none;
+    }
+    .startup-welcome {
+      animation: welcome-static-fade 300ms ease-out both;
+    }
+    @keyframes welcome-static-fade {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+  }
+</style>

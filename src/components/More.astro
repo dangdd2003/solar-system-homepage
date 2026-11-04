@@ -1,0 +1,388 @@
+---
+import Footer from "./Footer.astro";
+const skillGroups = [
+  {
+    title: "Programming",
+    intro:
+      "My study focuses on mathematical problems, mainly in AI, Machine Learning, and Signal/Image Processing. I also read lots of documentation about AI automation, computer systems, CI/CD workflows, and system optimization. Sometimes I do math for 3D modelling or animated visualizations (just for fun, btw).",
+    rows: [
+      { label: "Languages", items: ["C/C++", "Python", "Java", "TypeScript", "Bash"] },
+      { label: "Databases", items: ["MySQL/MariaDB", "MongoDB", "ChromaDB"] },
+      {
+        label: "Machine Learning & AI",
+        items: [
+          "Scikit-Learn",
+          "PyTorch",
+          "TensorFlow",
+          "Keras",
+          "OpenCV",
+          "Transformers",
+          "Diffusers",
+          "LangChain"
+        ]
+      },
+      {
+        label: "Backend & Web",
+        items: ["Spring Boot", "Quarkus", "Maven", "React", "REST", "gRPC"]
+      }
+    ]
+  },
+  {
+    title: "Tech Stacks",
+    rows: [
+      { label: "Development & Operations", items: ["Git", "Docker", "Kubernetes", "Datadog"] },
+      { label: "Data & Storage", items: ["Supabase", "Qdrant"] },
+      { label: "Cloud Platforms", items: ["AWS", "GCP", "MS Azure"] },
+      { label: "Virtualization", items: ["RHEV", "OpenStack", "VMware ESXi"] }
+    ]
+  },
+  {
+    title: "Fundamental Knowledge",
+    rows: [
+      { label: "Computer Science", items: ["Algorithms", "OOP", "Kernel & System", "Networking"] },
+      {
+        label: "AI & Data",
+        items: ["Machine Learning", "Deep Learning", "Feature Learning/Engineering", "RAG", "OCR"]
+      },
+      { label: "Signal Processing", items: ["Digital Signal/Image Processing"] },
+      {
+        label: "Engineering Practices",
+        items: ["CI/CD Workflows", "Vector Database/Embedding/Search"]
+      }
+    ]
+  }
+];
+---
+
+<section id="more" class="section more" data-planet-panel="earth">
+  <div class="container">
+    <h2 class="section__heading" data-reveal="@heading">
+      <span class="section__num" data-reveal-part="num">
+        03.
+      </span>{" "}
+      <span class="section__title" data-reveal-split>
+        More About Me
+      </span>
+    </h2>
+
+    <div class="more__grid">
+      <article
+        data-resize-flip
+        class="more__card more__card--wide surface-card"
+        data-reveal="@card"
+        data-spotlight
+      >
+        <h3 class="more__title">Why I chose Computer Science</h3>
+        <p>
+          Working with numbers is my cup of tea. I really like natural sciences, especially Math,
+          Physics, and Chemistry (but not good enough to win any awards 🙃). It is just very
+          interesting and enjoyable to answer the question "why is it like that?", and I love
+          discussing everyday natural phenomena with others.
+        </p>
+        <p>
+          I started programming in high school, with C++ as my first language. Back then I only
+          learned how to solve basic algorithm problems. Now it's not only about the solution but
+          also the optimization, which is definitely the hardest part :)
+        </p>
+      </article>
+
+      <div class="more__group more__card--wide">
+        <h3 class="more__group-title" data-reveal="@eyebrow">
+          My Skills
+        </h3>
+        <div class="more__skills" data-resize-flip-group>
+          {skillGroups.map((group) => (
+            <article
+              data-resize-flip
+              class="more__card surface-card"
+              data-reveal="@card"
+              data-spotlight
+            >
+              <h4 class="more__title more__title--sm">{group.title}</h4>
+              {group.intro && <p>{group.intro}</p>}
+              <dl class="more__rows">
+                {group.rows.map((row) => (
+                  <div class="more__row" data-reveal="@chip" data-reveal-items="dt, li">
+                    <dt>{row.label}</dt>
+                    <dd>
+                      <ul class="more__chips">
+                        {row.items.map((item) => (
+                          <li class="surface-chip">{item}</li>
+                        ))}
+                      </ul>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <article data-resize-flip class="more__card surface-card" data-reveal="@card" data-spotlight>
+        <h3 class="more__title">Operating System</h3>
+        <p>
+          Linux is my main operating system for most of my work. I started with Fedora in high
+          school. Now I use Arch Linux "by the way", plus popular Red Hat distros (RHEL, Oracle
+          Linux, CentOS) at work. For my homelab and self-hosted servers I pick the most lightweight
+          and stable distro: Debian.
+        </p>
+        <p>
+          I use Windows only for… playing games… and MS Visual Studio, which only supports Windows
+          due to its reliance on DLLs, so… 🤕
+        </p>
+      </article>
+
+      <article data-resize-flip class="more__card surface-card" data-reveal="@card" data-spotlight>
+        <h3 class="more__title">Free time only for studying???</h3>
+        <p>
+          I'm not that crazy about studying, even in my free time. I play some "wjbu" games such as
+          Genshin Impact and Honkai: Star Rail, and I read books, manga, or daily tech news whenever
+          my phone is in my hand. I also played FPS games like CS2 on Steam and Valorant (very
+          rarely now).
+        </p>
+        <p>
+          Terraria and Oxygen Not Included are two "offline" games I really spent time on, and I
+          highly recommend both survival and adventure games. Ping me for anything gaming!
+        </p>
+        <a
+          class="btn btn--ghost more__cta"
+          href="mailto:3dbrogaming2003@gmail.com"
+          data-reveal="@button"
+        >
+          Talk games with me
+        </a>
+      </article>
+
+      <article
+        data-resize-flip
+        class="more__card more__card--wide more__card--solar surface-card"
+        data-reveal="@card"
+        data-spotlight
+      >
+        <span
+          class="more__accent"
+          aria-hidden="true"
+          data-reveal="@line"
+          data-reveal-delay="200"
+        ></span>
+        <h3 class="more__title">The Solar System? …</h3>
+        <p>
+          Why the Solar System? … Remember the question "why it is?" I like so much? Space is full
+          of them :D How do the planets keep orbiting? Why does Saturn have rings? It is the same
+          fun I get from Math and Physics, so when I was thinking about how to decorate this site, a
+          small solar system came to mind right away.
+        </p>
+        <p>
+          Each planet keeps a part of this site, just click one and fly there. Doing the math for
+          the orbits, the lighting, and the camera was really fun, btw (and a bit painful at some
+          points 🙃).
+        </p>
+      </article>
+    </div>
+  </div>
+  <Footer panel />
+</section>
+
+<style>
+  .section__heading {
+    margin-bottom: var(--space-lg);
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .section__title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .more__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-md);
+  }
+
+  .more__card--wide {
+    grid-column: 1 / -1;
+  }
+
+  .more__card {
+    min-width: 0;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--glass-shadow);
+    padding: 1.5rem;
+  }
+
+  .more__card p {
+    color: var(--color-text-muted);
+    font-size: var(--text-body);
+    line-height: 1.7;
+    margin-bottom: var(--space-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .more__card p:last-child {
+    margin-bottom: 0;
+  }
+
+  .more__title {
+    color: var(--color-text);
+    font-size: var(--text-title);
+    line-height: 1.3;
+    margin-bottom: var(--space-sm);
+  }
+
+  .more__title--sm {
+    font-size: 1.05rem;
+  }
+
+  .more__group-title {
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-sm);
+  }
+
+  .more__skills {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-sm);
+    align-items: start;
+  }
+
+  .more__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .more__row dt {
+    font-family: var(--font-mono);
+    font-size: var(--text-label);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .more__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    list-style: none;
+    min-width: 0;
+  }
+
+  .more__chips li {
+    font-family: var(--font-mono);
+    font-size: var(--text-chip);
+    line-height: 1.4;
+    color: var(--color-text);
+    background: var(--glass-bg-subtle);
+    border: var(--glass-border-subtle);
+    border-radius: 6px;
+    padding: 0.2rem 0.55rem;
+    overflow-wrap: anywhere;
+  }
+
+  .more__cta {
+    margin-top: var(--space-sm);
+  }
+
+  /* The card's 1px left border stays transparent; the 2px accent rule sits
+     on the padding edge just inside it (absolute offsets are measured from
+     the padding box, so the bar cannot overlay the border slot). Hover and
+     planet hover repaint every border side, so the left edge is re-pinned
+     to transparent with selectors that out-rank both. */
+  .more__card--solar {
+    position: relative;
+    border-left-color: transparent;
+    overflow: clip;
+  }
+
+  html .more__card--solar:hover,
+  html .more__card--solar:focus-visible,
+  html main [data-planet-theme] .more__card--solar:hover,
+  html main [data-planet-theme] .more__card--solar:focus-visible {
+    border-left-color: transparent;
+  }
+
+  .more__accent {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    background: rgba(255, 204, 51, 0.55);
+    pointer-events: none;
+  }
+
+  @media (max-width: 1000px) {
+    .more__skills {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (orientation: portrait), (max-width: 720px) {
+    .more__grid,
+    .more__skills {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Phones: tighter spacing and type so cards stay compact and readable */
+  @media (max-width: 600px) {
+    .section__heading {
+      margin-bottom: var(--space-md);
+    }
+
+    .more__grid {
+      gap: var(--space-sm);
+    }
+
+    .more__group {
+      margin-top: var(--space-xs);
+    }
+
+    .more__card {
+      padding: clamp(0.9rem, 4vw, 1.1rem) clamp(0.8rem, 4vw, 1rem);
+    }
+
+    .more__card p {
+      line-height: 1.6;
+      margin-bottom: 0.75rem;
+    }
+
+    .more__title {
+      margin-bottom: 0.75rem;
+    }
+
+    .more__title--sm {
+      font-size: 1rem;
+    }
+
+    .more__rows {
+      gap: 0.7rem;
+    }
+
+    .more__cta {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+  }
+
+  /* Very small phones (≈320px) */
+  @media (max-width: 360px) {
+    .more__card {
+      padding: 1rem 0.85rem;
+    }
+  }
+</style>

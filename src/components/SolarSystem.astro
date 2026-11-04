@@ -1,0 +1,928 @@
+---
+---
+
+<canvas id="solar-canvas" aria-hidden="true"></canvas>
+<div
+  id="texture-loading"
+  role="status"
+  aria-live="polite"
+  hidden
+  data-resize-flip-root
+  data-resize-flip
+>
+  <div class="texture-loading__surface">
+    <span class="texture-loading__icon" aria-hidden="true">
+      <span class="spinner"></span>
+      <svg class="texture-loading__check" viewBox="0 0 16 16" fill="none">
+        <path d="m3.5 8 3 3 6-6" pathLength="1"></path>
+      </svg>
+    </span>
+    <span class="texture-loading__label">
+      <span id="texture-loading-text">Loading textures</span>
+    </span>
+    <span class="texture-loading__track" aria-hidden="true">
+      <span class="texture-loading__progress"></span>
+    </span>
+  </div>
+</div>
+
+<div id="left-controls" class="left-controls" data-resize-flip-root data-resize-flip>
+  <button
+    id="btn-toggle-mode"
+    class="speed-btn btn-mode-toggle"
+    aria-label="Toggle interaction mode"
+    data-tooltip="Switch to 3D Orbit Mode"
+    data-mode="reading"
+  >
+    <svg
+      class="mode-icon mode-icon--orbit"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-30 12 12)" />
+    </svg>
+    <svg
+      class="mode-icon mode-icon--scroll"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M4 6h16M4 12h16M4 18h10" />
+    </svg>
+  </button>
+  <div id="info-btn-wrapper" class="info-btn-wrapper collapsed">
+    <button
+      id="btn-toggle-info"
+      class="speed-btn active"
+      aria-label="Toggle Planet Info"
+      title="Planet Info"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
+      </svg>
+    </button>
+  </div>
+</div>
+
+<div id="speed-controls" class="speed-controls" data-resize-flip-root data-resize-flip>
+  <button id="btn-play-pause" class="speed-btn active" aria-label="Pause" title="Pause simulation">
+    <svg id="icon-play-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+    </svg>
+  </button>
+  <button
+    id="btn-toggle-slider"
+    class="speed-btn"
+    aria-label="Speed Settings"
+    title="Speed settings"
+  >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" />
+    </svg>
+  </button>
+  <div id="slider-container" class="slider-container collapsed">
+    <input
+      type="range"
+      id="speed-slider"
+      min="0"
+      max="20"
+      step="0.1"
+      value="1"
+      class="speed-slider"
+      aria-label="Simulation Speed"
+    />
+    <input
+      type="number"
+      id="speed-input"
+      class="speed-input"
+      min="0"
+      max="20"
+      step="0.1"
+      value="1"
+      aria-label="Speed value"
+    />
+  </div>
+</div>
+
+<aside id="fact-card" hidden data-resize-flip-root data-resize-flip>
+  <h3 id="fact-name"></h3>
+  <p id="fact-label"></p>
+  <dl>
+    <div>
+      <dt>Radius</dt>
+      <dd id="fact-radius"></dd>
+    </div>
+    <div>
+      <dt>Distance from Sun</dt>
+      <dd id="fact-distance"></dd>
+    </div>
+    <div>
+      <dt>Orbital period</dt>
+      <dd id="fact-period"></dd>
+    </div>
+  </dl>
+</aside>
+
+<script src="../scripts/solar-system-ui.ts"></script>
+<script>
+  import { onPageReady } from "../scripts/page-ready";
+  import { initTextureLoading } from "../scripts/texture-loading";
+
+  onPageReady(() => initTextureLoading());
+</script>
+
+<style>
+  /*
+   * The canvas box is exactly the fixed viewport box, and the renderer sizes its buffer
+   * from clientHeight, so the two always agree. 100vw includes the scrollbar gutter and
+   * 100vh on mobile is the large viewport (taller than the visible area while the URL bar
+   * is shown), either of which makes the buffer and the CSS box disagree and stretches
+   * frames during resize. Percentages of the fixed containing block avoid both. No
+   * transition, filter or will-change here: a size or compositing change must land in the
+   * same frame as the buffer it describes.
+   */
+  #solar-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    display: block;
+    touch-action: none;
+    cursor: grab;
+  }
+
+  #solar-canvas:active {
+    cursor: grabbing;
+  }
+
+  .left-controls {
+    position: fixed;
+    bottom: max(var(--space-sm), env(safe-area-inset-bottom, 0.5rem));
+    left: max(var(--space-sm), env(safe-area-inset-left, 0px));
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 3rem;
+    width: 3rem;
+    min-width: 3rem;
+    padding: 0 0.25rem;
+    box-sizing: border-box;
+    border-radius: 1.5rem;
+    background:
+      radial-gradient(
+        130% 100% at 50% 0%,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(255, 255, 255, 0.01) 100%
+      ),
+      rgba(8, 8, 12, 0.28);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
+      inset 0 -1px 0 0 rgba(255, 255, 255, 0.03),
+      0 12px 36px 0 rgba(0, 0, 0, 0.35),
+      0 4px 12px 0 rgba(0, 0, 0, 0.18);
+    transition:
+      width 0.38s cubic-bezier(0.25, 1, 0.5, 1),
+      scale 0.65s cubic-bezier(0.25, 1, 0.5, 1);
+    overflow: hidden;
+  }
+
+  /* Hide bottom controls and loading pill during startup animation before completion */
+  :global(html.js:not(.startup-ready):not(.startup-seen)) .left-controls,
+  :global(html.js:not(.startup-ready):not(.startup-seen)) .speed-controls,
+  :global(html.js:not(.startup-ready):not(.startup-seen)) #texture-loading {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: translateY(16px) !important;
+    filter: blur(10px) !important;
+  }
+
+  /* Smooth soft-blur entrance when startup completes and on page refresh */
+  :global(html.js.startup-ready) .left-controls,
+  :global(html.js.startup-seen) .left-controls,
+  :global(html.js.startup-ready) .speed-controls,
+  :global(html.js.startup-seen) .speed-controls {
+    /* `backwards`, not `both`: the keyframes end on filter: blur(0), and fill-mode `both`
+       would keep that filter on the glass controls forever, making them a backdrop root. */
+    animation: controlsEntrance 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.25s backwards;
+  }
+
+  @keyframes controlsEntrance {
+    0% {
+      opacity: 0;
+      transform: translateY(24px);
+      filter: blur(12px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0px);
+    }
+  }
+
+  @keyframes controlsEntranceLite {
+    0% {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Phones and touch screens: fade and rise only. Animating `filter` re-rasterizes the glass
+     pill and recomputes its backdrop blur on every frame, the costliest part on a phone GPU. */
+  @media (max-width: 600px), (pointer: coarse) {
+    :global(html.js.startup-ready) .left-controls,
+    :global(html.js.startup-seen) .left-controls,
+    :global(html.js.startup-ready) .speed-controls,
+    :global(html.js.startup-seen) .speed-controls {
+      animation-name: controlsEntranceLite;
+    }
+  }
+
+  /* Visibility fallback */
+  :global(html.startup-seen) .left-controls,
+  :global(html.startup-seen) .speed-controls {
+    visibility: visible;
+  }
+
+  /* No-JS fallback */
+  :global(html:not(.js)) .left-controls,
+  :global(html:not(.js)) .speed-controls {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    filter: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(html.js.startup-ready) .left-controls,
+    :global(html.startup-seen) .left-controls,
+    :global(html.js.startup-ready) .speed-controls,
+    :global(html.startup-seen) .speed-controls {
+      transition: none !important;
+      transform: translateY(0) !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      filter: none !important;
+    }
+  }
+
+  .left-controls:has(.info-btn-wrapper:not(.collapsed)) {
+    width: 5.625rem;
+    gap: 4px;
+  }
+
+  .mode-icon {
+    position: absolute;
+    transition:
+      transform 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+      opacity 0.25s ease;
+  }
+
+  .btn-mode-toggle[data-mode="orbit"] .mode-icon--orbit {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+
+  .btn-mode-toggle[data-mode="orbit"] .mode-icon--scroll {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.5);
+  }
+
+  .btn-mode-toggle[data-mode="reading"] .mode-icon--orbit {
+    opacity: 0;
+    transform: rotate(90deg) scale(0.5);
+  }
+
+  .btn-mode-toggle[data-mode="reading"] .mode-icon--scroll {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+
+  .info-btn-wrapper {
+    overflow: hidden;
+    width: 2.375rem;
+    height: 2.375rem;
+    opacity: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition:
+      width 0.38s cubic-bezier(0.25, 1, 0.5, 1),
+      opacity 0.25s ease;
+  }
+
+  .info-btn-wrapper.collapsed {
+    width: 0;
+    height: 2.375rem;
+    opacity: 0;
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  #btn-toggle-info.speed-btn.active {
+    color: var(--planet-text, #fff);
+    text-shadow: 0 0 8px rgba(var(--planet-rgb, 255, 255, 255), 0.4);
+  }
+
+  #btn-toggle-info.speed-btn.active::before {
+    background: linear-gradient(
+      180deg,
+      rgba(var(--planet-rgb, 255, 255, 255), 0.22),
+      rgba(var(--planet-rgb, 255, 255, 255), 0.06)
+    );
+    border: 1px solid rgba(var(--planet-rgb, 255, 255, 255), 0.25);
+    box-shadow:
+      inset 0 1px 1px rgba(var(--planet-rgb, 255, 255, 255), 0.5),
+      0 4px 14px rgba(var(--planet-rgb, 255, 255, 255), 0.25);
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  #fact-card {
+    position: fixed;
+    left: max(var(--space-sm), env(safe-area-inset-left, 0px));
+    bottom: max(4.5rem, calc(3rem + var(--space-sm) + 0.5rem));
+    z-index: 200;
+    width: min(17.5rem, calc(100vw - 2 * max(var(--space-sm), env(safe-area-inset-left, 0px))));
+    /* Apple Liquid Glass: crisp blur, subtle sheerness, dual rim specular bevel */
+    background:
+      radial-gradient(
+        130% 100% at 50% 0%,
+        rgba(var(--planet-rgb, 255, 255, 255), 0.1) 0%,
+        rgba(var(--planet-rgb, 255, 255, 255), 0.02) 100%
+      ),
+      rgba(8, 8, 12, 0.45);
+    border: 1px solid rgba(var(--planet-rgb, 255, 255, 255), 0.22);
+    border-radius: var(--card-radius);
+    padding: 1.1rem 1.25rem;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow:
+      inset 0 1px 0 0 rgba(var(--planet-rgb, 255, 255, 255), 0.35),
+      0 16px 40px -8px rgba(0, 0, 0, 0.45),
+      0 0 20px 0 rgba(var(--planet-rgb, 255, 255, 255), 0.12);
+
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    transition:
+      transform 0.38s cubic-bezier(0.25, 1, 0.5, 1),
+      scale 0.65s cubic-bezier(0.25, 1, 0.5, 1),
+      opacity 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease,
+      background 0.3s ease;
+  }
+
+  /* Same planet hover glow as the section boxes (panels.css). */
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) #fact-card:not([hidden]):hover {
+      border-color: rgba(var(--planet-rgb), 0.55);
+      box-shadow:
+        inset 0 1px 0 0 rgba(var(--planet-rgb), 0.35),
+        0 16px 40px -8px rgba(0, 0, 0, 0.45),
+        0 0 22px 0 rgba(var(--planet-rgb), 0.22);
+    }
+  }
+
+  #fact-card[hidden] {
+    display: block !important;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    pointer-events: none;
+    /* hide immediately without delay */
+    transition: all 0.3s ease 0s;
+  }
+
+  #fact-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.25rem;
+    color: var(--planet-text, var(--color-text));
+    text-shadow: 0 0 16px rgba(var(--planet-rgb, 255, 255, 255), 0.3);
+    transition:
+      color 0.4s ease,
+      text-shadow 0.4s ease;
+  }
+
+  #fact-label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--planet-text, var(--color-accent));
+    background: rgba(var(--planet-rgb, 255, 255, 255), 0.08);
+    border: 1px solid rgba(var(--planet-rgb, 255, 255, 255), 0.2);
+    border-radius: 6px;
+    padding: 0.15rem 0.55rem;
+    display: inline-block;
+    margin-bottom: 0.85rem;
+    box-shadow:
+      inset 0 1px 0 rgba(var(--planet-rgb, 255, 255, 255), 0.25),
+      0 2px 8px rgba(0, 0, 0, 0.15);
+    transition:
+      color 0.4s ease,
+      background 0.4s ease,
+      border-color 0.4s ease,
+      box-shadow 0.4s ease;
+  }
+
+  #fact-card dl {
+    display: grid;
+    gap: 0.45rem;
+    border-top: 1px solid rgba(var(--planet-rgb, 255, 255, 255), 0.12);
+    padding-top: 0.75rem;
+    transition: border-color 0.4s ease;
+  }
+
+  #fact-card dl div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+  }
+
+  #fact-card dt {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+
+  #fact-card dd {
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    text-align: right;
+  }
+
+  #texture-loading {
+    position: fixed;
+    top: calc(var(--nav-height) + 0.75rem);
+    right: 1rem;
+    z-index: 200;
+    max-width: calc(100vw - 2rem);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    line-height: 1;
+    color: var(--color-text);
+    pointer-events: none;
+  }
+
+  #texture-loading[hidden] {
+    display: none;
+  }
+
+  .texture-loading__surface {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow: hidden;
+    isolation: isolate;
+    box-sizing: border-box;
+    height: 1.625rem;
+    padding: 0 0.625rem;
+    border: var(--glass-border-subtle);
+    border-radius: 999px;
+    background: var(--glass-bg-subtle);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow-sm);
+    opacity: 0;
+    transform-origin: right center;
+  }
+
+  .texture-loading__icon {
+    position: relative;
+    flex: 0 0 0.625rem;
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+
+  #texture-loading .spinner {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--color-accent-soft);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+  }
+
+  .texture-loading__check {
+    position: absolute;
+    inset: -1px;
+    width: calc(100% + 2px);
+    height: calc(100% + 2px);
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+  }
+
+  .texture-loading__check path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  .texture-loading__label {
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  #texture-loading-text {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .texture-loading__track {
+    position: absolute;
+    right: 0.625rem;
+    bottom: 0;
+    left: 0.625rem;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .texture-loading__progress {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.75));
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+
+  /* Touch: 44px minimum targets. The slider keeps its 6px track, drawn by the background. */
+  @media (pointer: coarse) {
+    .left-controls {
+      width: 3.25rem;
+      height: 3.25rem;
+      min-width: 3.25rem;
+    }
+
+    .left-controls:has(.info-btn-wrapper:not(.collapsed)) {
+      width: 6.25rem;
+    }
+
+    .speed-controls {
+      height: 3.25rem;
+      min-width: 3.25rem;
+      max-width: calc(100vw - 2 * max(var(--space-xs), env(safe-area-inset-right, 0px)) - 3.75rem);
+    }
+
+    .speed-btn,
+    .info-btn-wrapper {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+
+    .info-btn-wrapper.collapsed {
+      height: 2.75rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #texture-loading .spinner {
+      animation: none;
+    }
+
+    /* Fade only: no slide in or out */
+    #fact-card,
+    #fact-card[hidden] {
+      transform: none;
+      scale: none;
+      transition:
+        opacity 0.2s ease,
+        visibility 0.2s ease;
+    }
+  }
+
+  .speed-controls {
+    position: fixed;
+    bottom: max(var(--space-sm), env(safe-area-inset-bottom, 0.5rem));
+    right: max(var(--space-sm), env(safe-area-inset-right, 0px));
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 3rem;
+    min-width: 3rem;
+    max-width: calc(100vw - 2 * max(var(--space-sm), env(safe-area-inset-right, 0px)) - 3.5rem);
+    padding: 0 0.25rem;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background:
+      radial-gradient(
+        130% 100% at 50% 0%,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(255, 255, 255, 0.01) 100%
+      ),
+      rgba(8, 8, 12, 0.28);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
+      inset 0 -1px 0 0 rgba(255, 255, 255, 0.03),
+      0 12px 36px 0 rgba(0, 0, 0, 0.35),
+      0 4px 12px 0 rgba(0, 0, 0, 0.18);
+    transition:
+      width 0.38s cubic-bezier(0.25, 1, 0.5, 1),
+      max-width 0.38s cubic-bezier(0.25, 1, 0.5, 1),
+      scale 0.65s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .speed-btn {
+    width: 2.375rem;
+    height: 2.375rem;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      color 0.25s ease,
+      transform 0.15s ease;
+    position: relative;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
+    user-select: none !important;
+    outline: none !important;
+  }
+
+  /* Keyboard focus only: the base rule hides outlines for mouse/touch */
+  .speed-btn:focus-visible {
+    outline: 2px solid var(--color-accent) !important;
+    outline-offset: 2px;
+  }
+
+  .speed-btn svg {
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    display: block;
+  }
+
+  #icon-play-pause {
+    transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .speed-btn + .speed-btn {
+    margin-left: 4px;
+  }
+
+  .speed-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    opacity: 0;
+    transform: scale(0.7);
+    transition:
+      opacity 0.25s ease,
+      transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: -1;
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .speed-btn:hover {
+      color: #ffffff;
+    }
+
+    :global(:where(html:not([data-input="touch"]))) .speed-btn:not(.active):hover::before {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .speed-btn:active {
+    transform: scale(0.92);
+    transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .speed-btn.active {
+    color: #fff;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+  }
+
+  .speed-btn.active::before {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06));
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.55),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.12),
+      0 4px 14px rgba(0, 0, 0, 0.25);
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .slider-container {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-left: 0.5rem;
+    padding-right: 4px;
+    overflow: hidden;
+    width: clamp(6.25rem, calc(100vw - 13.125rem), 10.625rem);
+    max-width: calc(100vw - 13.125rem);
+    flex: 1 1 auto;
+    min-width: 0;
+    opacity: 1;
+    transition:
+      width 0.38s cubic-bezier(0.25, 1, 0.5, 1),
+      max-width 0.38s cubic-bezier(0.25, 1, 0.5, 1),
+      opacity 0.25s ease,
+      margin-left 0.38s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .slider-container.collapsed {
+    width: 0;
+    max-width: 0;
+    opacity: 0;
+    margin-left: 0;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .speed-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    flex: 1 1 auto;
+    max-width: 7.5rem;
+    min-width: 2.25rem;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    outline: none;
+    transition: background 0.25s ease;
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .speed-slider:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+
+  .speed-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 50%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(220, 220, 230, 0.65) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.9),
+      0 2px 8px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(8px);
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .speed-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+  }
+
+  /* Touch slider: the thumb and track rules sit after the base rules above, so these win over
+     them. The 6px track is drawn by the background, and Firefox gets a matching thumb and track. */
+  @media (pointer: coarse) {
+    .speed-slider {
+      height: 2.75rem;
+      background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)) center / 100%
+        6px no-repeat;
+    }
+
+    .speed-slider::-webkit-slider-thumb {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .speed-slider::-moz-range-track {
+      height: 6px;
+      background: transparent;
+      border-radius: 3px;
+    }
+
+    .speed-slider::-moz-range-thumb {
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.85) 0%,
+        rgba(220, 220, 230, 0.65) 100%
+      );
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.9),
+        0 2px 8px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+    }
+  }
+
+  .speed-input {
+    width: 3.3rem;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    padding: 0.25rem 0.35rem;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s ease;
+    -moz-appearance: textfield;
+  }
+
+  .speed-input::-webkit-inner-spin-button,
+  .speed-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+  }
+
+  .speed-input:focus {
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow:
+      inset 0 1px 2px rgba(0, 0, 0, 0.2),
+      0 0 0 2px rgba(255, 255, 255, 0.1);
+  }
+
+  @media (orientation: portrait), (max-width: 600px) {
+    .left-controls {
+      bottom: max(var(--space-xs), env(safe-area-inset-bottom, 0.5rem));
+      left: max(var(--space-xs), env(safe-area-inset-left, 0px));
+    }
+
+    .speed-controls {
+      bottom: max(var(--space-xs), env(safe-area-inset-bottom, 0.5rem));
+      right: max(var(--space-xs), env(safe-area-inset-right, 0px));
+      max-width: calc(100vw - 2 * max(var(--space-xs), env(safe-area-inset-right, 0px)) - 6.5rem);
+    }
+
+    .slider-container {
+      width: clamp(5.3rem, calc(100vw - 11.875rem), 10.625rem);
+      max-width: calc(100vw - 11.875rem);
+      gap: 0.4rem;
+      margin-left: 0.35rem;
+      padding-right: 2px;
+    }
+
+    .speed-slider {
+      min-width: 1.75rem;
+    }
+
+    .speed-input {
+      width: 2.9rem;
+      font-size: 0.8rem;
+      padding: 0.2rem 0.25rem;
+    }
+
+    #fact-card {
+      left: max(var(--space-xs), env(safe-area-inset-left, 0px));
+      bottom: calc(3rem + 2 * max(var(--space-xs), env(safe-area-inset-bottom, 0.5rem)));
+      width: calc(100vw - 2 * max(var(--space-xs), env(safe-area-inset-left, 0px)));
+      max-width: 20rem;
+    }
+  }
+</style>

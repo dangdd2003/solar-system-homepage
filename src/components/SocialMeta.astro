@@ -1,0 +1,51 @@
+---
+/**
+ * Open Graph + Twitter/X card tags for link previews on every messaging / social platform.
+ * All values are pre-resolved by buildSocialMeta (absolute https URLs, MIME types, truncation).
+ */
+import type { SocialMeta } from "../utils/social";
+
+interface Props {
+  meta: SocialMeta;
+}
+
+const { meta } = Astro.props;
+const [primary] = meta.images;
+---
+
+<meta property="og:type" content={meta.type} />
+<meta property="og:url" content={meta.url} />
+<meta property="og:title" content={meta.title} />
+<meta property="og:description" content={meta.description} />
+{meta.siteName && <meta property="og:site_name" content={meta.siteName} />}
+{meta.locale && <meta property="og:locale" content={meta.locale} />}
+{meta.alternateLocales.map((locale) => (
+  <meta property="og:locale:alternate" content={locale} />
+))}
+{meta.images.map((image) => (
+  <>
+    <meta property="og:image" content={image.url} />
+    <meta property="og:image:secure_url" content={image.url} />
+    <meta property="og:image:type" content={image.type} />
+    <meta property="og:image:width" content={String(image.width)} />
+    <meta property="og:image:height" content={String(image.height)} />
+    <meta property="og:image:alt" content={image.alt} />
+  </>
+))}
+
+<meta name="twitter:card" content={meta.twitterCard} />
+<meta name="twitter:url" content={meta.url} />
+<meta name="twitter:title" content={meta.title} />
+<meta name="twitter:description" content={meta.description} />
+{primary && (
+  <>
+    <meta name="twitter:image" content={primary.url} />
+    <meta name="twitter:image:alt" content={primary.alt} />
+  </>
+)}
+{meta.twitterHandle && (
+  <>
+    <meta name="twitter:site" content={meta.twitterHandle} />
+    <meta name="twitter:creator" content={meta.twitterHandle} />
+  </>
+)}

@@ -1,0 +1,341 @@
+---
+import Footer from "./Footer.astro";
+---
+
+<section
+  id="hero"
+  class="section hero"
+  data-planet-panel="overview"
+  data-reveal-gate="hero--entered"
+>
+  <div class="container">
+    <!-- prettier-ignore -->
+    <p class="hero__eyebrow" data-reveal="@eyebrow" data-reveal-nosplit><span class="hero__greeting" data-greeting data-reveal-nosplit><span class="hero__greeting-word" lang="vi">Xin chào</span></span>, my name is</p>
+    <div class="hero__name" data-reveal="@hero-name" data-reveal-delay="120">
+      <span class="hero__flare" data-reveal-part="flare" data-reveal-deco aria-hidden="true"></span>
+      <span class="hero__orbit" data-reveal-part="orbit" data-reveal-deco aria-hidden="true"></span>
+      <span class="hero__lens" data-reveal-part="lens" data-reveal-deco aria-hidden="true"></span>
+      <h1 class="hero__title">Doan Dinh Dang.</h1>
+    </div>
+    <h2 class="hero__subtitle" data-reveal="@eyebrow" data-reveal-delay="260">
+      I run the cloud and build with AI.
+    </h2>
+    <p class="hero__lead" data-reveal="@text" data-reveal-delay="300">
+      A Computer Science graduate from USTH and System &amp; Cloud Engineer at MobiFone. I run
+      national-scale infrastructure by day and research computer vision and LLMs in between.
+    </p>
+    <div class="hero__actions">
+      <a
+        class="btn btn--primary"
+        href="#projects"
+        data-nav-link="mars"
+        data-reveal="@button"
+        data-reveal-delay="360"
+      >
+        View my work
+      </a>
+      <a
+        class="btn btn--ghost"
+        href="#contact"
+        data-nav-link="saturn"
+        data-reveal="@button"
+        data-reveal-delay="360"
+      >
+        Get in touch
+      </a>
+    </div>
+  </div>
+  <Footer panel />
+</section>
+
+<script>
+  import { onPageReady } from "../scripts/page-ready";
+  import { STARTUP_SESSION_KEY } from "../scripts/startup-controller";
+  import { onSceneReady } from "../scripts/startup/reveal-gate";
+
+  /** Longest a returning visitor's hero waits for the scene before it enters anyway. */
+  const SCENE_WAIT_CAP_MS = 600;
+
+  /**
+   * Returning visitors skip the startup, so the scene compiles its shaders and uploads the
+   * Sun texture while the hero would be animating. Enter once the scene has drawn its first
+   * textured frame (or after the cap), so the name does not play through those stalls.
+   */
+  function enterWhenSceneSettles(hero: HTMLElement): void {
+    let entered = false;
+    let unsubscribe = (): void => {};
+    const enter = (): void => {
+      if (entered) return;
+      entered = true;
+      clearTimeout(timer);
+      unsubscribe();
+      requestAnimationFrame(() => {
+        hero.classList.add("hero--entered");
+      });
+    };
+    const timer = setTimeout(enter, SCENE_WAIT_CAP_MS);
+    // Calls enter() synchronously when the scene is already ready.
+    unsubscribe = onSceneReady(enter);
+  }
+
+  function setupHeroEntrance(): void {
+    const hero = document.getElementById("hero");
+    if (!hero) return;
+
+    try {
+      if (sessionStorage.getItem(STARTUP_SESSION_KEY) === "true") {
+        enterWhenSceneSettles(hero);
+      }
+    } catch {
+      hero.classList.add("hero--entered");
+    }
+
+    // startup:complete fires at most once per page load and the handler is
+    // idempotent (classList.add), so a one-shot listener is sufficient.
+    document.addEventListener(
+      "startup:complete",
+      () => {
+        // Defer to the next frame so the hero reveal cascade does not land in
+        // the same task as the startup teardown.
+        requestAnimationFrame(() => {
+          hero.classList.add("hero--entered");
+        });
+      },
+      { once: true }
+    );
+  }
+
+  onPageReady(setupHeroEntrance);
+</script>
+
+<script>
+  import { onPageReady } from "../scripts/page-ready";
+  import { initGreetingRotator } from "../scripts/greeting-rotator";
+
+  onPageReady(() => {
+    const greeting = document.querySelector<HTMLElement>("[data-greeting]");
+    if (greeting) initGreetingRotator(greeting);
+  });
+</script>
+
+<style>
+  /* Entrance choreography is driven by the shared reveal system (src/scripts/reveal.ts,
+     src/styles/reveal.css). The hero's reveals are held by data-reveal-gate="hero--entered"
+     on the section; this minimal gate keeps them hidden until then (JS only, so no-JS
+     visitors see everything). Footer uses data-reveal too, hence :global. */
+  :global(html.js) .hero:not(.hero--entered) :global([data-reveal]) {
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero :global([data-reveal]) {
+      opacity: 1 !important;
+    }
+  }
+
+  .hero__name {
+    position: relative;
+    isolation: isolate;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .hero__flare {
+    position: absolute;
+    inset: -45% -12%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      rgba(255, 255, 255, 0.85),
+      rgba(246, 173, 85, 0.35) 45%,
+      rgba(246, 173, 85, 0) 100%
+    );
+    /* No mix-blend-mode: the flare is the first layer inside the isolated .hero__name, so a
+       blend only ever meets a transparent backdrop (same result as normal), yet it still makes
+       the browser blend the group in software every frame the flare animates. */
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .hero__orbit {
+    position: absolute;
+    inset: -38% -8%;
+    z-index: -1;
+    border-radius: 50%;
+    border: 1.5px solid rgba(246, 173, 85, 0.7);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .hero__lens {
+    position: absolute;
+    left: 0;
+    top: -20%;
+    height: 140%;
+    aspect-ratio: 1;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      #000 70%,
+      rgba(246, 173, 85, 0.9) 82%,
+      rgba(246, 173, 85, 0) 100%
+    );
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Phones: the name spans the full width, so keep the resting flare and orbit
+     inside it (anime's scale still widens them during the entrance). Must come
+     after the base rules above: same specificity, so source order decides. */
+  @media (max-width: 600px) {
+    .hero__flare {
+      inset: -45% 0;
+    }
+
+    .hero__orbit {
+      inset: -38% 0;
+    }
+  }
+
+  @media (max-width: 360px), (max-height: 500px) and (orientation: landscape) {
+    .hero__flare {
+      inset: -28% 0;
+    }
+
+    .hero__orbit {
+      inset: -24% 0;
+    }
+
+    .hero__lens {
+      top: -10%;
+      height: 120%;
+    }
+  }
+
+  .hero__eyebrow {
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--space-xs);
+  }
+
+  /* Rotating greeting (Xin chào / Hello / Bonjour): a clipping box the words wipe up through.
+     Width animates to the incoming word so the comma glides. */
+  .hero__greeting {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: bottom;
+    transition: width 0.55s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+
+  .hero__greeting-word {
+    display: inline-block;
+    color: var(--color-text);
+    transform: translateY(0);
+    transition: transform 0.55s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+
+  /* Outgoing word leaves the flow and exits through the top of the box */
+  .hero__greeting-word.is-leaving {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: translateY(-110%);
+  }
+
+  /* Incoming word starts just below the box, then slides up into place */
+  .hero__greeting-word.is-entering {
+    transform: translateY(110%);
+    transition: none;
+  }
+
+  /* background-clip: text only paints inside the box; the bottom padding keeps
+     descenders (the "g" in Dang) inside it, and the margin absorbs it so spacing is unchanged.
+     Two layers: a warm light band (parked off-canvas at rest) and the base gradient. */
+  .hero__title {
+    /* Shrinks with height too, so short landscape screens get a balanced name; capped at the h1 max. */
+    font-size: clamp(2.5rem, min(6vw, 9vh), 4.5rem);
+    min-width: 0;
+    overflow-wrap: anywhere;
+    padding-bottom: 0.15em;
+    margin-bottom: calc(var(--space-xs) - 0.15em);
+    color: var(--color-text);
+    background-image:
+      linear-gradient(105deg, transparent 40%, rgba(246, 173, 85, 0.6) 50%, transparent 60%),
+      linear-gradient(135deg, #ffffff 35%, #e2e8f0 65%, #f6ad55 100%);
+    background-size:
+      250% 100%,
+      100% 100%;
+    background-position:
+      0% 0%,
+      0% 0%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* One light sweep across the name once it has landed (reveal.ts sets data-reveal-done).
+     Desktop only: animating background-position on clipped text repaints on the main thread,
+     so phones, tablets and touch screens skip it. */
+  @media (prefers-reduced-motion: no-preference) and (min-width: 601px) and (any-hover: hover) and (any-pointer: fine) {
+    .hero.hero--entered .hero__name[data-reveal-done] .hero__title {
+      animation: hero-sheen 1.6s cubic-bezier(0.45, 0, 0.2, 1) 0.1s 1;
+    }
+  }
+
+  @keyframes hero-sheen {
+    from {
+      background-position:
+        0% 0%,
+        0% 0%;
+    }
+    to {
+      background-position:
+        100% 0%,
+        0% 0%;
+    }
+  }
+
+  /* Soft halo keeps the text readable over the scene on every screen shape, not only portrait. */
+  .hero__subtitle,
+  .hero__lead,
+  .hero__eyebrow {
+    text-shadow:
+      0 1px 12px rgba(0, 0, 0, 0.95),
+      0 0 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .hero__subtitle {
+    color: var(--color-text-muted);
+    font-size: clamp(1.25rem, min(3.6vw, 5.2vh), 2.75rem);
+    margin-bottom: var(--space-md);
+    font-weight: 500;
+  }
+
+  .hero__lead {
+    max-width: 44ch;
+    color: var(--color-text-muted);
+    font-size: var(--text-lead);
+    line-height: 1.65;
+    margin-bottom: var(--space-lg);
+  }
+
+  .hero__actions {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+  }
+
+  @media (orientation: portrait), (max-width: 600px) {
+    .hero__lead {
+      margin-bottom: var(--space-md);
+    }
+  }
+</style>

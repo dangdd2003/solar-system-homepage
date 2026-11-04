@@ -1,0 +1,481 @@
+---
+import Footer from "./Footer.astro";
+import { Image } from "astro:assets";
+import avatar from "../assets/avatar.jpg";
+
+const timeline = [
+  { year: "2003", text: "Born in Hanoi, Vietnam" },
+  {
+    year: "2021",
+    text: "Started studying at the University of Science and Technology of Hanoi (USTH)"
+  },
+  { year: "2023", text: "Backend Developer intern at FPT IS (Information System)" },
+  { year: "2024", text: "Researcher intern at ICT Lab, USTH. Graduated from USTH" },
+  { year: "Now", text: "System & Cloud Engineer at MobiFone Corporation" }
+];
+
+const loves = [
+  "Music",
+  "Piano (want to learn how to play 😕)",
+  "Reading",
+  "Artificial Intelligence"
+];
+---
+
+<section id="about" class="section about" data-planet-panel="sun">
+  <div class="container">
+    <h2 class="section__heading" data-reveal="@heading">
+      <span class="section__num" data-reveal-part="num">
+        01.
+      </span>{" "}
+      <span class="section__title" data-reveal-split>
+        About Me
+      </span>
+    </h2>
+
+    <div class="about__intro surface-card" data-resize-flip data-spotlight data-reveal="@card">
+      <Image
+        class="about__portrait"
+        data-reveal="@image"
+        src={avatar}
+        alt="Portrait of Doan Dinh Dang"
+        width={160}
+        height={160}
+        densities={[1, 2]}
+        decoding="async"
+        loading="lazy"
+      />
+      <div>
+        <p class="about__name" data-reveal="@eyebrow">
+          Doan Dinh Dang <span lang="vi">(Đoàn Đình Đăng)</span>
+        </p>
+        <p class="about__tagline" data-reveal="@text" data-reveal-delay="80">
+          A Computer Science graduate, System Administrator, Engineer and Researcher.
+        </p>
+        <p class="about__banner surface-chip" data-reveal="@text" data-reveal-delay="160">
+          A simple boy with many dreams and ambitions!
+        </p>
+      </div>
+    </div>
+
+    <div class="about__block surface-card" data-resize-flip data-spotlight data-reveal="@card">
+      <h3 class="about__subheading" data-reveal="@eyebrow">
+        Who am I
+      </h3>
+      <div class="about__text">
+        <!-- prettier-ignore -->
+        <p data-reveal="@text" data-reveal-nosplit>
+          <span class="about__greeting" data-about-greeting><span class="about__greeting-word" lang="en">Hello</span></span>! 🤓 My name is Dang. I graduated in Computer Science from the{" "}
+          <a href="https://usth.edu.vn/" target="_blank" rel="noopener noreferrer">
+            University of Science and Technology of Hanoi (USTH)
+          </a>
+          . I spend most of my time researching and studying AI and Machine Learning, mostly
+          Computer Vision and LLMs. DevOps and System Administration are my second career path.
+        </p>
+        <p data-reveal="@text">
+          Every morning I spend 30 minutes to an hour learning French, my third language. In my free
+          time, I sometimes learn 3D modelling in Computer Graphics.
+        </p>
+        <p data-reveal="@text">
+          Becoming an AI Engineer has been my dream since I started studying in this field. Think
+          about our future home: when we step inside, the lights and the music turn on
+          automatically. With only our voice or a hand gesture, the house works like magic while we
+          sit on the sofa. Wouldn't that be convenient, time-saving and fun? 😊
+        </p>
+      </div>
+    </div>
+
+    <div class="about__grid" data-resize-flip-group>
+      <div class="surface-card" data-resize-flip data-spotlight data-reveal="@card">
+        <h3 class="about__subheading" data-reveal="@eyebrow">
+          Biography
+        </h3>
+        <div class="about__track" data-reveal="@timeline">
+          <span class="about__rail" aria-hidden="true" data-reveal-part="rail"></span>
+          <ol class="about__timeline" aria-label="Biography">
+            {timeline.map(({ year, text }) => (
+              <li data-reveal-part="star">
+                <span class="about__year">{year}</span>
+                <span>{text}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+      <div class="surface-card" data-resize-flip data-spotlight data-reveal="@card">
+        <h3 class="about__subheading" data-reveal="@eyebrow">
+          I{" "}
+          <span role="img" aria-label="love">
+            ♥
+          </span>
+        </h3>
+        <ul class="about__loves" data-reveal="@chip">
+          {loves.map((item) => (
+            <li class="surface-chip">{item}</li>
+          ))}
+        </ul>
+        <a
+          class="btn btn--ghost about__connect"
+          href="#contact"
+          data-nav-link="saturn"
+          data-reveal="@button"
+        >
+          Connect with me
+        </a>
+      </div>
+    </div>
+  </div>
+  <Footer panel />
+</section>
+
+<script>
+  import { onPageReady } from "../scripts/page-ready";
+  import { initGreetingRotator } from "../scripts/greeting-rotator";
+
+  onPageReady(() => {
+    const greeting = document.querySelector<HTMLElement>("[data-about-greeting]");
+    if (greeting) {
+      initGreetingRotator(greeting, {
+        wordClass: "about__greeting-word",
+        intervalMs: 2800,
+        wipeMs: 600
+      });
+    }
+  });
+</script>
+
+<style>
+  /* Rotating greeting (Hello / Xin chào / Bonjour): the word rolls over like a cube turning to its next face.
+     Width animates to the incoming word so the text after it glides. */
+  .about__greeting {
+    position: relative;
+    display: inline-block;
+    white-space: nowrap;
+    vertical-align: bottom;
+    perspective: 320px;
+    transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  .about__greeting-word {
+    display: inline-block;
+    color: var(--color-text);
+    font-weight: 600;
+    transform-origin: 50% 50% -0.55em;
+    backface-visibility: hidden;
+    transition:
+      transform 0.6s cubic-bezier(0.65, 0, 0.35, 1),
+      opacity 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  /* Outgoing face rolls up and away */
+  .about__greeting-word.is-leaving {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: rotateX(90deg);
+    opacity: 0;
+  }
+
+  /* Incoming face starts underneath, then rolls up into view */
+  .about__greeting-word.is-entering {
+    transform: rotateX(-90deg);
+    opacity: 0;
+    transition: none;
+  }
+
+  .section__heading {
+    margin-bottom: var(--space-lg);
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .section__title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .about__intro {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .about__portrait {
+    flex-shrink: 0;
+    width: 10rem;
+    height: 10rem;
+    object-fit: cover;
+    border: var(--glass-border);
+    border-radius: 50%;
+    box-shadow: var(--glass-shadow);
+  }
+
+  .about__name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .about__name span {
+    display: block;
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
+  .about__tagline {
+    color: var(--color-text-muted);
+    margin-top: var(--space-xs);
+  }
+
+  .about__banner {
+    display: inline-block;
+    margin-top: var(--space-sm);
+    padding: 0.5rem 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    color: var(--color-text);
+    background: var(--glass-bg-subtle);
+    border: var(--glass-border-subtle);
+    border-radius: 8px;
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
+  }
+
+  .about__subheading {
+    font-size: var(--text-title);
+    color: var(--color-text);
+    margin: var(--space-lg) 0 var(--space-sm);
+  }
+
+  .about__text p {
+    color: var(--color-text-muted);
+    font-size: var(--text-body);
+    line-height: 1.7;
+    margin-bottom: var(--space-sm);
+  }
+
+  .about__text a {
+    color: var(--color-text);
+    text-decoration: underline;
+    text-decoration-color: var(--color-border-hover);
+    text-underline-offset: 3px;
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .about__text a:hover {
+      text-decoration-color: currentColor;
+    }
+  }
+
+  .about__text a:focus-visible {
+    text-decoration-color: currentColor;
+  }
+
+  .about__grid {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: var(--space-md);
+    /* Equal-height cards side by side */
+    align-items: stretch;
+  }
+
+  .about__track {
+    position: relative;
+  }
+
+  /* The timeline line is its own element so it can draw (grow-y) without squashing the items */
+  .about__rail {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    border-left: var(--glass-border);
+    transform-origin: top;
+  }
+
+  .about__timeline {
+    list-style: none;
+    padding-left: var(--space-sm);
+  }
+
+  .about__timeline li {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(2.8rem, auto) minmax(0, 1fr);
+    gap: 0.5rem;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    padding: 0.35rem 0;
+    overflow-wrap: anywhere;
+  }
+
+  .about__timeline li::before {
+    content: "";
+    position: absolute;
+    left: calc(-1 * var(--space-sm) - 4px);
+    top: 0.75rem;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-text);
+    /* --rv-dot is registered non-inheriting (reveal.css); pull the li's value into the dot */
+    --rv-dot: inherit;
+    scale: var(--rv-dot);
+    box-shadow: 0 0 calc(var(--rv-dot-glow, 0) * 1px) rgba(var(--planet-rgb, 255, 255, 255), 0.9);
+  }
+
+  .about__year {
+    font-family: var(--font-mono);
+    color: var(--color-text);
+  }
+
+  .about__loves {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+  }
+
+  .about__loves li {
+    font-family: var(--font-mono);
+    font-size: var(--text-chip);
+    color: var(--color-text);
+    background: var(--glass-bg-subtle);
+    border: var(--glass-border-subtle);
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
+    box-shadow: var(--glass-shadow-sm);
+  }
+
+  .about__connect {
+    margin-top: var(--space-md);
+  }
+
+  /* Each block is a glass card at every screen size so text stays readable over the scene */
+  .about__intro,
+  .about__block,
+  .about__grid > div {
+    /* Denser than the shared glass so muted text holds up over the bright Sun */
+    background:
+      radial-gradient(
+        130% 100% at 50% 0%,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(255, 255, 255, 0.01) 100%
+      ),
+      rgba(8, 8, 12, 0.74);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--glass-shadow);
+    padding: clamp(1rem, 0.6rem + 1.2vw, 1.75rem);
+    min-width: 0;
+  }
+
+  .about__block,
+  .about__grid {
+    margin-top: var(--space-md);
+  }
+
+  .about__block .about__subheading,
+  .about__grid .about__subheading {
+    margin-top: 0;
+  }
+
+  .about__text p:last-child {
+    margin-bottom: 0;
+  }
+
+  .about__text p,
+  .about__tagline,
+  .about__name span,
+  .about__timeline li {
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  /* Reduced transparency: solid cards, no blur behind them */
+  @media (prefers-reduced-transparency: reduce) {
+    .about__intro,
+    .about__block,
+    .about__grid > div {
+      background: rgb(12, 12, 16);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  @media (orientation: portrait), (max-width: 720px) {
+    .about__grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-sm);
+    }
+
+    .about__intro {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .about__portrait {
+      width: 6rem;
+      height: 6rem;
+    }
+  }
+
+  /* Phones: centered intro, tighter type, full-width action */
+  @media (max-width: 600px) {
+    .section__heading {
+      margin-bottom: var(--space-md);
+    }
+
+    .about__intro {
+      align-items: center;
+      text-align: center;
+      gap: var(--space-sm);
+    }
+
+    .about__portrait {
+      width: clamp(4.5rem, 20vw, 6rem);
+      height: clamp(4.5rem, 20vw, 6rem);
+    }
+
+    .about__name {
+      font-size: 1.3rem;
+    }
+
+    .about__banner {
+      font-size: 0.8rem;
+    }
+
+    .about__intro,
+    .about__block,
+    .about__grid > div {
+      padding: clamp(0.9rem, 4vw, 1.1rem) clamp(0.8rem, 4vw, 1rem);
+    }
+
+    .about__block,
+    .about__grid {
+      margin-top: var(--space-sm);
+    }
+
+    .about__text p {
+      line-height: 1.65;
+      margin-bottom: 0.75rem;
+    }
+
+    .about__timeline li {
+      grid-template-columns: minmax(2.8rem, auto) minmax(0, 1fr);
+      font-size: 0.9rem;
+    }
+
+    .about__connect {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+  }
+</style>

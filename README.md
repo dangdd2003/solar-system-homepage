@@ -1,43 +1,50 @@
-# Astro Starter Kit: Minimal
+# Đ-Dev's Homepage
 
-```sh
-npm create astro@latest -- --template minimal
+- My personal portfolio, built as an interactive 3D solar system.
+
+- Live at: [www.dangdd.dev](https://www.dangdd.dev)
+
+## Tech stack
+
+| Tech                                                                                           | Description                 |
+| ---------------------------------------------------------------------------------------------- | --------------------------- |
+| Astro <img src="https://cdn.simpleicons.org/astro" height="16" alt="" />                       | Static site framework       |
+| TypeScript <img src="https://cdn.simpleicons.org/typescript" height="16" alt="" />             | Language                    |
+| three.js <img src="https://cdn.simpleicons.org/threedotjs/000000/ffffff" height="16" alt="" /> | 3D solar system rendering   |
+| GLSL <img src="https://cdn.simpleicons.org/opengl" height="16" alt="" />                       | Custom shaders              |
+| Anime.js <img src="https://cdn.simpleicons.org/animedotjs/000000/ffffff" height="16" alt="" /> | Intro and reveal animations |
+| Docker <img src="https://cdn.simpleicons.org/docker" height="16" alt="" />                     | Container deployment        |
+| GitHub Actions <img src="https://cdn.simpleicons.org/githubactions" height="16" alt="" />      | CI/CD                       |
+
+## Development
+
+Requires Node.js 22.23.4+.
+
+```bash
+npm install
+npm run dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Deployment
 
-## 🚀 Project Structure
+### Node.js
 
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+npm ci
+npm run build
+npm start
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+Live on port 4321
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+### Docker
 
-Any static assets, like images, can be placed in the `public/` directory.
+```bash
+docker compose -f .github/deployment/compose.yaml up --build
+```
 
-## 🧞 Commands
+Live on port 8080
 
-All commands are run from the root of the project, from a terminal:
+## Credits
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+- Planet textures: [public/textures/CREDITS.md](public/textures/CREDITS.md)

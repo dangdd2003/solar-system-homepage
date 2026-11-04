@@ -1,0 +1,88 @@
+---
+interface Props {
+  /** Rendered at the end of a planet panel instead of as the global footer. */
+  panel?: boolean;
+}
+
+const { panel = false } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<footer
+  class={panel ? "footer footer--panel" : "footer footer--global"}
+  data-reveal={panel ? "@footer" : undefined}
+>
+  <p class="footer__copy">
+    © {year} From Đ-Dev with{" "}
+    <svg
+      class="footer__heart"
+      data-reveal-part="heart"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      role="img"
+      aria-label="love"
+    >
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  </p>
+</footer>
+
+<style>
+  /* Text-only, fully transparent so the fixed starfield canvas shows through. */
+  .footer {
+    background: transparent;
+    padding-block: var(--space-md);
+    position: relative;
+    z-index: 10;
+    text-align: center;
+  }
+
+  /* Panel footer sits at the end of each scrollable panel, so it never overlaps content. */
+  .footer--panel {
+    width: 100%;
+    flex-shrink: 0;
+    margin-top: var(--space-lg);
+  }
+
+  /* Phones: clear the bottom corner controls (SolarSystem.astro) so the text sits above them. */
+  @media (orientation: portrait), (max-width: 600px) {
+    .footer--panel {
+      padding-bottom: calc(3rem + 2 * max(var(--space-xs), env(safe-area-inset-bottom, 0.5rem)));
+    }
+  }
+
+  .footer__copy {
+    max-width: 100%;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+  }
+
+  .footer__heart {
+    width: 0.875rem;
+    height: 0.875rem;
+    color: #e05252;
+    display: inline-block;
+    vertical-align: middle;
+    transition: transform 0.2s ease;
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    :global(:where(html:not([data-input="touch"]))) .footer__heart:hover {
+      transform: scale(1.2);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .footer__heart,
+    .footer__heart:hover {
+      transition: none;
+      transform: none;
+    }
+  }
+</style>

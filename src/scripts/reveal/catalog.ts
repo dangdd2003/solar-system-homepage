@@ -1,0 +1,2206 @@
+/**
+ * Complete effect catalog (192 members across 12 roles).
+ *
+ * Each profile captures the member's family, cost tier, compact safety,
+ * prerequisite geometry capabilities, duration, and fallback target.
+ * Used by choreography admit and scoring algorithms.
+ */
+
+import type { RevealType } from "./pools";
+
+export type Cost = "plain" | "accent" | "premium";
+export type Family = "rise" | "arc" | "iris" | "glow" | "draw" | "wave" | "fold" | "roll" | "coda";
+
+export interface EffectProfile {
+  readonly name: string;
+  readonly type: RevealType;
+  readonly family: Family;
+  readonly cost: Cost;
+  readonly compactSafe: boolean;
+  readonly requires: readonly string[];
+  readonly durationMs: number;
+  readonly fallback: string;
+  readonly flags: {
+    readonly mask?: boolean;
+    readonly clip?: boolean;
+    readonly filter?: boolean;
+    readonly textShadow?: boolean;
+    readonly halo?: boolean;
+    readonly svgDraw?: boolean;
+  };
+}
+
+export const CATALOG: readonly EffectProfile[] = Object.freeze([
+  // -------------------------------------------------------------
+  // HEADING (19)
+  // -------------------------------------------------------------
+  {
+    name: "starlight",
+    type: "heading",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 760,
+    fallback: "fade",
+    flags: { textShadow: true }
+  },
+  {
+    name: "warp",
+    type: "heading",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 820,
+    fallback: "starlight",
+    flags: {}
+  },
+  {
+    name: "meteor-shower",
+    type: "heading",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 800,
+    fallback: "starlight",
+    flags: {}
+  },
+  {
+    name: "pulsar-wave",
+    type: "heading",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 780,
+    fallback: "starlight",
+    flags: {}
+  },
+  {
+    name: "gravity-well",
+    type: "heading",
+    family: "fold",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["split-words", "no-focusable-host"],
+    durationMs: 840,
+    fallback: "starlight",
+    flags: {}
+  },
+  {
+    name: "orbital-arc",
+    type: "heading",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "redshift",
+    type: "heading",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 800,
+    fallback: "orbital-arc",
+    flags: { filter: true }
+  },
+  {
+    name: "deep-space-signal",
+    type: "heading",
+    family: "draw",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["split-chars"],
+    durationMs: 760,
+    fallback: "starlight",
+    flags: {}
+  },
+  {
+    name: "ticker-underline",
+    type: "heading",
+    family: "draw",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 860,
+    fallback: "word-rise",
+    flags: {}
+  },
+  {
+    name: "orbit-sweep",
+    type: "heading",
+    family: "draw",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["no-focusable-host"],
+    durationMs: 720,
+    fallback: "word-rise",
+    flags: {}
+  },
+  {
+    name: "word-fold-in",
+    type: "heading",
+    family: "fold",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["split-words", "no-focusable-host"],
+    durationMs: 840,
+    fallback: "word-rise",
+    flags: {}
+  },
+  {
+    name: "word-rise",
+    type: "heading",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 720,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "num-roll",
+    type: "heading",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["numeric"],
+    durationMs: 560,
+    fallback: "word-rise",
+    flags: {}
+  },
+
+  {
+    name: "nebula-bleed-in",
+    type: "heading",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 880,
+    fallback: "starlight",
+    flags: { filter: true }
+  },
+  {
+    name: "star-chart-plot",
+    type: "heading",
+    family: "rise",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-chars"],
+    durationMs: 760,
+    fallback: "starlight",
+    flags: {}
+  },
+  {
+    name: "event-horizon-slice",
+    type: "heading",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 900,
+    fallback: "warp",
+    flags: { clip: true }
+  },
+  {
+    name: "solar-flare-ink",
+    type: "heading",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 780,
+    fallback: "word-rise",
+    flags: { filter: true }
+  },
+  {
+    name: "comet-tail-track",
+    type: "heading",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 840,
+    fallback: "word-rise",
+    flags: {}
+  },
+  {
+    name: "orbital-kerning",
+    type: "heading",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-chars"],
+    durationMs: 880,
+    fallback: "starlight",
+    flags: {}
+  },
+  // -------------------------------------------------------------
+  // CARD (20)
+  // -------------------------------------------------------------
+  {
+    name: "orbit-in",
+    type: "card",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "nebula",
+    type: "card",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 800,
+    fallback: "orbit-in",
+    flags: { filter: true }
+  },
+  {
+    name: "rise",
+    type: "card",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 640,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "gravity-assist",
+    type: "card",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 840,
+    fallback: "orbit-in",
+    flags: {}
+  },
+  {
+    name: "warp-jump",
+    type: "card",
+    family: "fold",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["no-focusable-host"],
+    durationMs: 880,
+    fallback: "rise",
+    flags: {}
+  },
+  {
+    name: "eclipse-transit",
+    type: "card",
+    family: "iris",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["no-focusable-host"],
+    durationMs: 840,
+    fallback: "orbit-in",
+    flags: { mask: true }
+  },
+  {
+    name: "starfield-parallax",
+    type: "card",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "rise",
+    flags: {}
+  },
+  {
+    name: "ring-plane",
+    type: "card",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 800,
+    fallback: "orbit-in",
+    flags: {}
+  },
+  {
+    name: "focus-lens-settle",
+    type: "card",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 520,
+    fallback: "depth-shift",
+    flags: {}
+  },
+  {
+    name: "ellipse-drift",
+    type: "card",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "depth-shift",
+    flags: {}
+  },
+  {
+    name: "depth-shift",
+    type: "card",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 600,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "eclipse-terminator",
+    type: "card",
+    family: "iris",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["no-focusable-host"],
+    durationMs: 640,
+    fallback: "depth-shift",
+    flags: { mask: true }
+  },
+  {
+    name: "shutter-rise",
+    type: "card",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 600,
+    fallback: "depth-shift",
+    flags: {}
+  },
+  {
+    name: "edge-pulse-once",
+    type: "card",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "depth-shift",
+    flags: {}
+  },
+
+  {
+    name: "aperture-open",
+    type: "card",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 780,
+    fallback: "fade",
+    flags: { mask: true }
+  },
+  {
+    name: "lens-flare-sweep",
+    type: "card",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 860,
+    fallback: "fade",
+    flags: { mask: true, filter: true }
+  },
+  {
+    name: "scan-line-down",
+    type: "card",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 900,
+    fallback: "fade",
+    flags: { mask: true }
+  },
+  {
+    name: "mass-collapse",
+    type: "card",
+    family: "rise",
+    cost: "premium",
+    compactSafe: false,
+    requires: [],
+    durationMs: 820,
+    fallback: "fade",
+    flags: { filter: true }
+  },
+  {
+    name: "depth-focus-pull",
+    type: "card",
+    family: "rise",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 900,
+    fallback: "fade",
+    flags: { filter: true }
+  },
+  {
+    name: "gyro-tilt-settle",
+    type: "card",
+    family: "arc",
+    cost: "premium",
+    compactSafe: false,
+    requires: [],
+    durationMs: 820,
+    fallback: "fade",
+    flags: {}
+  },
+  // -------------------------------------------------------------
+  // HERO-NAME (17)
+  // -------------------------------------------------------------
+  {
+    name: "supernova",
+    type: "hero-name",
+    family: "glow",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["no-focusable-host"],
+    durationMs: 840,
+    fallback: "hero-name-scale-settle",
+    flags: { filter: true, mask: true }
+  },
+  {
+    name: "event-horizon",
+    type: "hero-name",
+    family: "fold",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["no-focusable-host"],
+    durationMs: 880,
+    fallback: "hero-name-scale-settle",
+    flags: { filter: true }
+  },
+  {
+    name: "redshift-arrival",
+    type: "hero-name",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 850,
+    fallback: "hero-name-scale-settle",
+    flags: { filter: true }
+  },
+  {
+    name: "corona-eclipse",
+    type: "hero-name",
+    family: "iris",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["no-focusable-host"],
+    durationMs: 880,
+    fallback: "hero-name-scale-settle",
+    flags: { filter: true }
+  },
+  {
+    name: "orbital-capture",
+    type: "hero-name",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 820,
+    fallback: "hero-name-scale-settle",
+    flags: { filter: true }
+  },
+  {
+    name: "aurora-veil",
+    type: "hero-name",
+    family: "wave",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["no-focusable-host"],
+    durationMs: 900,
+    fallback: "hero-name-scale-settle",
+    flags: { filter: true, mask: true }
+  },
+  {
+    name: "hero-name-trace",
+    type: "hero-name",
+    family: "wave",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["split-chars", "no-focusable-host"],
+    durationMs: 840,
+    fallback: "hero-name-scale-settle",
+    flags: { textShadow: true }
+  },
+  {
+    name: "hero-name-scale-settle",
+    type: "hero-name",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 600,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "hero-name-flare-sweep",
+    type: "hero-name",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["part:flare"],
+    durationMs: 900,
+    fallback: "hero-name-scale-settle",
+    flags: {}
+  },
+  {
+    name: "hero-name-orbit-lock",
+    type: "hero-name",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["part:orbit"],
+    durationMs: 800,
+    fallback: "hero-name-scale-settle",
+    flags: {}
+  },
+  {
+    name: "hero-name-lens-iris",
+    type: "hero-name",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["part:lens"],
+    durationMs: 660,
+    fallback: "hero-name-scale-settle",
+    flags: {}
+  },
+
+  {
+    name: "hero-name-gradient-slice-drift",
+    type: "hero-name",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["split-chars"],
+    durationMs: 720,
+    fallback: "hero-name-scale-settle",
+    flags: {}
+  },
+  {
+    name: "hero-name-disk-tilt-settle",
+    type: "hero-name",
+    family: "fold",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-chars"],
+    durationMs: 880,
+    fallback: "hero-name-scale-settle",
+    flags: {}
+  },
+  {
+    name: "hero-name-singularity-pinch",
+    type: "hero-name",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-chars"],
+    durationMs: 860,
+    fallback: "hero-name-scale-settle",
+    flags: {}
+  },
+  {
+    name: "hero-name-pulsar-strobe",
+    type: "hero-name",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 840,
+    fallback: "fade",
+    flags: { filter: true }
+  },
+  {
+    name: "hero-name-orbit-letter-swap",
+    type: "hero-name",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-chars"],
+    durationMs: 900,
+    fallback: "hero-name-scale-settle",
+    flags: {}
+  },
+  {
+    name: "hero-name-diag-mask-wipe",
+    type: "hero-name",
+    family: "wave",
+    cost: "premium",
+    compactSafe: false,
+    requires: [],
+    durationMs: 820,
+    fallback: "hero-name-scale-settle",
+    flags: { mask: true, filter: true }
+  },
+  // -------------------------------------------------------------
+  // TEXT (17)
+  // -------------------------------------------------------------
+  {
+    name: "blur-in",
+    type: "text",
+    family: "glow",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 640,
+    fallback: "fade",
+    flags: { filter: true }
+  },
+  {
+    name: "wipe-right",
+    type: "text",
+    family: "iris",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "fade",
+    flags: { mask: true }
+  },
+  {
+    name: "fade-up",
+    type: "text",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 560,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "solar-wind",
+    type: "text",
+    family: "wave",
+    cost: "accent",
+    compactSafe: false,
+    requires: ["split-words"],
+    durationMs: 840,
+    fallback: "fade-up",
+    flags: {}
+  },
+  {
+    name: "stellar-dawn",
+    type: "text",
+    family: "glow",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "fade-up",
+    flags: { filter: true }
+  },
+  {
+    name: "word-constellation",
+    type: "text",
+    family: "wave",
+    cost: "accent",
+    compactSafe: false,
+    requires: ["split-words"],
+    durationMs: 880,
+    fallback: "fade-up",
+    flags: {}
+  },
+  {
+    name: "lines-rise",
+    type: "text",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["split-lines"],
+    durationMs: 800,
+    fallback: "paragraph-breathe",
+    flags: {}
+  },
+  {
+    name: "word-skew-in",
+    type: "text",
+    family: "fold",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 780,
+    fallback: "paragraph-breathe",
+    flags: {}
+  },
+  {
+    name: "paragraph-breathe",
+    type: "text",
+    family: "coda",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 640,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "line-scan-opacity",
+    type: "text",
+    family: "wave",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["split-lines"],
+    durationMs: 460,
+    fallback: "paragraph-breathe",
+    flags: {}
+  },
+  {
+    name: "soft-focus-in",
+    type: "text",
+    family: "glow",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["no-focusable-host"],
+    durationMs: 600,
+    fallback: "paragraph-breathe",
+    flags: { filter: true }
+  },
+
+  {
+    name: "text-iris-lines",
+    type: "text",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-lines"],
+    durationMs: 850,
+    fallback: "fade",
+    flags: { clip: true }
+  },
+  {
+    name: "text-tracking-settle",
+    type: "text",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 860,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "text-line-fold",
+    type: "text",
+    family: "fold",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-lines"],
+    durationMs: 840,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "text-wave-chars",
+    type: "text",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-chars"],
+    durationMs: 900,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "text-arc-swing",
+    type: "text",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["split-words"],
+    durationMs: 900,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "text-light-sweep",
+    type: "text",
+    family: "glow",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["split-words"],
+    durationMs: 840,
+    fallback: "fade",
+    flags: { mask: true, filter: true }
+  },
+  // -------------------------------------------------------------
+  // CHIP (17)
+  // -------------------------------------------------------------
+  {
+    name: "twinkle-cluster",
+    type: "chip",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "meteor-scatter",
+    type: "chip",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 820,
+    fallback: "twinkle-cluster",
+    flags: {}
+  },
+  {
+    name: "orbit-ring",
+    type: "chip",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "twinkle-cluster",
+    flags: {}
+  },
+  {
+    name: "solar-flare-burst",
+    type: "chip",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 820,
+    fallback: "twinkle-cluster",
+    flags: {}
+  },
+  {
+    name: "asteroid-belt",
+    type: "chip",
+    family: "wave",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "twinkle-cluster",
+    flags: {}
+  },
+  {
+    name: "binary-pulse",
+    type: "chip",
+    family: "glow",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 680,
+    fallback: "twinkle-cluster",
+    flags: {}
+  },
+  {
+    name: "orbit-chip-settle",
+    type: "chip",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 660,
+    fallback: "chip-wave",
+    flags: {}
+  },
+  {
+    name: "orbit-chip-align",
+    type: "chip",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "chip-wave",
+    flags: {}
+  },
+  {
+    name: "chip-wave",
+    type: "chip",
+    family: "wave",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "grid-ripple-chips",
+    type: "chip",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 660,
+    fallback: "chip-wave",
+    flags: {}
+  },
+  {
+    name: "chip-pop-stack",
+    type: "chip",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 660,
+    fallback: "chip-wave",
+    flags: {}
+  },
+
+  {
+    name: "tag-magnet-snap",
+    type: "chip",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 880,
+    fallback: "chip-wave",
+    flags: {}
+  },
+  {
+    name: "satellite-orbit-in",
+    type: "chip",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 840,
+    fallback: "chip-wave",
+    flags: {}
+  },
+  {
+    name: "spectrum-lineup",
+    type: "chip",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "fade",
+    flags: { filter: true }
+  },
+  {
+    name: "comet-chip-dash",
+    type: "chip",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 800,
+    fallback: "chip-wave",
+    flags: {}
+  },
+  {
+    name: "eclipse-tag-fade",
+    type: "chip",
+    family: "iris",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "chip-wave",
+    flags: { clip: true }
+  },
+  {
+    name: "ripple-spark-once",
+    type: "chip",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 880,
+    fallback: "chip-wave",
+    flags: { filter: true }
+  },
+  // -------------------------------------------------------------
+  // IMAGE (15)
+  // -------------------------------------------------------------
+  {
+    name: "eclipse",
+    type: "image",
+    family: "iris",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["image-not-link"],
+    durationMs: 860,
+    fallback: "image-drift-in",
+    flags: { mask: true }
+  },
+  {
+    name: "wipe-up",
+    type: "image",
+    family: "iris",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "image-drift-in",
+    flags: { mask: true }
+  },
+  {
+    name: "singularity-iris",
+    type: "image",
+    family: "iris",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["image-not-link"],
+    durationMs: 900,
+    fallback: "image-drift-in",
+    flags: { mask: true, filter: true }
+  },
+  {
+    name: "gravitational-lens",
+    type: "image",
+    family: "glow",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["image-not-link"],
+    durationMs: 840,
+    fallback: "image-drift-in",
+    flags: { halo: true, filter: true }
+  },
+  {
+    name: "lunar-phase",
+    type: "image",
+    family: "iris",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 840,
+    fallback: "image-drift-in",
+    flags: { mask: true }
+  },
+  {
+    name: "iris-open-lite",
+    type: "image",
+    family: "iris",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["image-not-link"],
+    durationMs: 700,
+    fallback: "image-drift-in",
+    flags: { mask: true }
+  },
+  {
+    name: "image-drift-in",
+    type: "image",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 900,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "image-shutter-sweep",
+    type: "image",
+    family: "iris",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["image-not-link"],
+    durationMs: 820,
+    fallback: "image-drift-in",
+    flags: { mask: true }
+  },
+  {
+    name: "image-focus-pull",
+    type: "image",
+    family: "glow",
+    cost: "premium",
+    compactSafe: false,
+    requires: ["image-not-link"],
+    durationMs: 800,
+    fallback: "image-drift-in",
+    flags: { filter: true }
+  },
+
+  {
+    name: "image-corner-aperture",
+    type: "image",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["image-not-link"],
+    durationMs: 900,
+    fallback: "image-drift-in",
+    flags: { mask: true }
+  },
+  {
+    name: "image-eclipse-exit",
+    type: "image",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["image-not-link"],
+    durationMs: 900,
+    fallback: "image-drift-in",
+    flags: { mask: true }
+  },
+  {
+    name: "image-chroma-bloom",
+    type: "image",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["image-not-link"],
+    durationMs: 900,
+    fallback: "image-drift-in",
+    flags: { filter: true }
+  },
+  {
+    name: "image-arc-swing",
+    type: "image",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 900,
+    fallback: "image-drift-in",
+    flags: {}
+  },
+  {
+    name: "image-squash-settle",
+    type: "image",
+    family: "wave",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 820,
+    fallback: "image-drift-in",
+    flags: {}
+  },
+  {
+    name: "image-curtain-drop",
+    type: "image",
+    family: "roll",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["image-not-link"],
+    durationMs: 880,
+    fallback: "image-drift-in",
+    flags: { mask: true, filter: true }
+  },
+  // -------------------------------------------------------------
+  // BUTTON (16)
+  // -------------------------------------------------------------
+  {
+    name: "gravity",
+    type: "button",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 520,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "zoom-in",
+    type: "button",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 480,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "thruster-ignition",
+    type: "button",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "gravity",
+    flags: {}
+  },
+  {
+    name: "docking-sequence",
+    type: "button",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 640,
+    fallback: "gravity",
+    flags: {}
+  },
+  {
+    name: "quasar-flash",
+    type: "button",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 640,
+    fallback: "gravity",
+    flags: { filter: true }
+  },
+  {
+    name: "button-press-in",
+    type: "button",
+    family: "rise",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 380,
+    fallback: "button-thruster",
+    flags: {}
+  },
+  {
+    name: "button-thruster",
+    type: "button",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 520,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "button-dock-slide",
+    type: "button",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 560,
+    fallback: "button-thruster",
+    flags: {}
+  },
+  {
+    name: "button-tick-scale",
+    type: "button",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 460,
+    fallback: "button-thruster",
+    flags: {}
+  },
+  {
+    name: "button-ripple-once",
+    type: "button",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 520,
+    fallback: "button-press-in",
+    flags: {}
+  },
+
+  {
+    name: "button-iris-unveil",
+    type: "button",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 580,
+    fallback: "button-press-in",
+    flags: { mask: true }
+  },
+  {
+    name: "button-wipe-glint",
+    type: "button",
+    family: "roll",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 640,
+    fallback: "button-dock-slide",
+    flags: { mask: true }
+  },
+  {
+    name: "button-blur-focus",
+    type: "button",
+    family: "rise",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 700,
+    fallback: "button-press-in",
+    flags: { filter: true }
+  },
+  {
+    name: "button-hinge-drop",
+    type: "button",
+    family: "fold",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 680,
+    fallback: "button-thruster",
+    flags: {}
+  },
+  {
+    name: "button-tremor-settle",
+    type: "button",
+    family: "wave",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 460,
+    fallback: "button-tick-scale",
+    flags: {}
+  },
+  {
+    name: "button-orbit-arc",
+    type: "button",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 700,
+    fallback: "docking-sequence",
+    flags: {}
+  },
+  // -------------------------------------------------------------
+  // ICON (16)
+  // -------------------------------------------------------------
+  {
+    name: "ring",
+    type: "icon",
+    family: "glow",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 580,
+    fallback: "fade",
+    flags: { halo: true }
+  },
+  {
+    name: "twinkle",
+    type: "icon",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 560,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "pulsar-beacon",
+    type: "icon",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "ring",
+    flags: { halo: true }
+  },
+  {
+    name: "orbit-spin",
+    type: "icon",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 620,
+    fallback: "twinkle",
+    flags: {}
+  },
+  {
+    name: "comet-flyby",
+    type: "icon",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 680,
+    fallback: "twinkle",
+    flags: {}
+  },
+  {
+    name: "corona-icon-pop",
+    type: "icon",
+    family: "glow",
+    cost: "premium",
+    compactSafe: false,
+    requires: [],
+    durationMs: 640,
+    fallback: "icon-drop-settle",
+    flags: { halo: true }
+  },
+  {
+    name: "icon-spin-in",
+    type: "icon",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 620,
+    fallback: "icon-drop-settle",
+    flags: {}
+  },
+  {
+    name: "icon-drop-settle",
+    type: "icon",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 520,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "icon-draw-in",
+    type: "icon",
+    family: "draw",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["stroke"],
+    durationMs: 620,
+    fallback: "icon-drop-settle",
+    flags: { svgDraw: true }
+  },
+  {
+    name: "icon-twin-pop",
+    type: "icon",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 560,
+    fallback: "icon-drop-settle",
+    flags: {}
+  },
+
+  {
+    name: "icon-iris-bloom",
+    type: "icon",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 660,
+    fallback: "icon-drop-settle",
+    flags: { mask: true }
+  },
+  {
+    name: "icon-gyro-settle",
+    type: "icon",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 560,
+    fallback: "icon-spin-in",
+    flags: {}
+  },
+  {
+    name: "icon-core-ignite",
+    type: "icon",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 660,
+    fallback: "fade",
+    flags: { filter: true }
+  },
+  {
+    name: "icon-rim-trace",
+    type: "icon",
+    family: "draw",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["stroke"],
+    durationMs: 680,
+    fallback: "icon-draw-in",
+    flags: { svgDraw: true }
+  },
+  {
+    name: "icon-signal-ping",
+    type: "icon",
+    family: "glow",
+    cost: "premium",
+    compactSafe: false,
+    requires: [],
+    durationMs: 620,
+    fallback: "corona-icon-pop",
+    flags: { halo: true }
+  },
+  {
+    name: "icon-planet-arc",
+    type: "icon",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 560,
+    fallback: "icon-drop-settle",
+    flags: {}
+  },
+  // -------------------------------------------------------------
+  // EYEBROW (14)
+  // -------------------------------------------------------------
+  {
+    name: "fade",
+    type: "eyebrow",
+    family: "coda",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 400,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "fade-left",
+    type: "eyebrow",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 420,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "fade-right",
+    type: "eyebrow",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 420,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "transmission",
+    type: "eyebrow",
+    family: "draw",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 520,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "aurora-sweep",
+    type: "eyebrow",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 640,
+    fallback: "fade",
+    flags: { mask: true }
+  },
+  {
+    name: "eyebrow-two-step",
+    type: "eyebrow",
+    family: "coda",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 360,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "eyebrow-slide-track",
+    type: "eyebrow",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 380,
+    fallback: "eyebrow-two-step",
+    flags: {}
+  },
+  {
+    name: "eyebrow-settle-scale",
+    type: "eyebrow",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 380,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "eyebrow-flash-once",
+    type: "eyebrow",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 480,
+    fallback: "eyebrow-two-step",
+    flags: { filter: true }
+  },
+
+  {
+    name: "eyebrow-iris-focus",
+    type: "eyebrow",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "eyebrow-settle-scale",
+    flags: { mask: true, filter: true }
+  },
+  {
+    name: "eyebrow-unfurl-scale",
+    type: "eyebrow",
+    family: "fold",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 680,
+    fallback: "eyebrow-settle-scale",
+    flags: { mask: true }
+  },
+  {
+    name: "eyebrow-signal-jitter",
+    type: "eyebrow",
+    family: "wave",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 390,
+    fallback: "eyebrow-two-step",
+    flags: {}
+  },
+  {
+    name: "eyebrow-moon-phase",
+    type: "eyebrow",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "eyebrow-slide-track",
+    flags: { mask: true }
+  },
+  {
+    name: "eyebrow-halo-ring-once",
+    type: "eyebrow",
+    family: "rise",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "fade",
+    flags: { halo: true }
+  },
+  // -------------------------------------------------------------
+  // TIMELINE (14)
+  // -------------------------------------------------------------
+  {
+    name: "constellation",
+    type: "timeline",
+    family: "wave",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 680,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "comet-chain",
+    type: "timeline",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "constellation",
+    flags: {}
+  },
+  {
+    name: "pulsar-sequence",
+    type: "timeline",
+    family: "glow",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "constellation",
+    flags: {}
+  },
+  {
+    name: "meteor-rain",
+    type: "timeline",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 800,
+    fallback: "constellation",
+    flags: {}
+  },
+  {
+    name: "timeline-tick-in",
+    type: "timeline",
+    family: "draw",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 700,
+    fallback: "timeline-node-pop",
+    flags: {}
+  },
+  {
+    name: "timeline-track-grow",
+    type: "timeline",
+    family: "draw",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "timeline-node-pop",
+    flags: {}
+  },
+  {
+    name: "timeline-node-pop",
+    type: "timeline",
+    family: "roll",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 660,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "timeline-cascade-drop",
+    type: "timeline",
+    family: "wave",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 800,
+    fallback: "timeline-node-pop",
+    flags: {}
+  },
+  {
+    name: "meridian-sweep",
+    type: "timeline",
+    family: "draw",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 840,
+    fallback: "timeline-track-grow",
+    flags: { clip: true, filter: true }
+  },
+  {
+    name: "star-hop-nodes",
+    type: "timeline",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "timeline-node-pop",
+    flags: {}
+  },
+  {
+    name: "gravity-pull-entries",
+    type: "timeline",
+    family: "rise",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 820,
+    fallback: "timeline-cascade-drop",
+    flags: { filter: true }
+  },
+  {
+    name: "beacon-node-blink",
+    type: "timeline",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "timeline-node-pop",
+    flags: { filter: true }
+  },
+  {
+    name: "date-coordinate-roll",
+    type: "timeline",
+    family: "roll",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "timeline-node-pop",
+    flags: { clip: true }
+  },
+  {
+    name: "ring-stack-in",
+    type: "timeline",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 820,
+    fallback: "timeline-cascade-drop",
+    flags: {}
+  },
+
+  // -------------------------------------------------------------
+  // LINE (14)
+  // -------------------------------------------------------------
+  {
+    name: "comet-trail",
+    type: "line",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 680,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "light-speed",
+    type: "line",
+    family: "draw",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 640,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "pulsar-beam",
+    type: "line",
+    family: "glow",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 720,
+    fallback: "light-speed",
+    flags: {}
+  },
+  {
+    name: "retrograde",
+    type: "line",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 620,
+    fallback: "light-speed",
+    flags: {}
+  },
+  {
+    name: "signal-line-draw",
+    type: "line",
+    family: "draw",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 620,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "drawn-rule",
+    type: "line",
+    family: "draw",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["stroke"],
+    durationMs: 640,
+    fallback: "signal-line-draw",
+    flags: { svgDraw: true }
+  },
+  {
+    name: "ink-wipe-line",
+    type: "line",
+    family: "iris",
+    cost: "premium",
+    compactSafe: false,
+    requires: [],
+    durationMs: 640,
+    fallback: "signal-line-draw",
+    flags: { mask: true }
+  },
+  {
+    name: "pulse-trace-line",
+    type: "line",
+    family: "glow",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 560,
+    fallback: "signal-line-draw",
+    flags: {}
+  },
+
+  {
+    name: "line-fork-split",
+    type: "line",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 640,
+    fallback: "signal-line-draw",
+    flags: { filter: true, svgDraw: true }
+  },
+  {
+    name: "line-stepped-measure",
+    type: "line",
+    family: "draw",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 840,
+    fallback: "drawn-rule",
+    flags: { svgDraw: true }
+  },
+  {
+    name: "line-spring-overshoot",
+    type: "line",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 800,
+    fallback: "pulse-trace-line",
+    flags: { svgDraw: true }
+  },
+  {
+    name: "line-thin-thick-settle",
+    type: "line",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "signal-line-draw",
+    flags: { filter: true, svgDraw: true }
+  },
+  {
+    name: "line-dock-slide",
+    type: "line",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 620,
+    fallback: "signal-line-draw",
+    flags: { svgDraw: true }
+  },
+  {
+    name: "line-ripple-wave",
+    type: "line",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 840,
+    fallback: "signal-line-draw",
+    flags: { svgDraw: true }
+  },
+  // -------------------------------------------------------------
+  // FOOTER (12)
+  // -------------------------------------------------------------
+  {
+    name: "stardust",
+    type: "footer",
+    family: "coda",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 540,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "heartbeat-pulsar",
+    type: "footer",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["part:heart"],
+    durationMs: 680,
+    fallback: "stardust",
+    flags: {}
+  },
+  {
+    name: "cosmic-dust",
+    type: "footer",
+    family: "coda",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 600,
+    fallback: "stardust",
+    flags: {}
+  },
+  {
+    name: "footer-coda-fade",
+    type: "footer",
+    family: "coda",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 740,
+    fallback: "fade",
+    flags: {}
+  },
+  {
+    name: "footer-heart-pulse-once",
+    type: "footer",
+    family: "glow",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["part:heart"],
+    durationMs: 460,
+    fallback: "footer-coda-fade",
+    flags: {}
+  },
+  {
+    name: "footer-dock-rise",
+    type: "footer",
+    family: "rise",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 600,
+    fallback: "footer-coda-fade",
+    flags: {}
+  },
+  {
+    name: "footer-iris-bloom",
+    type: "footer",
+    family: "iris",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 820,
+    fallback: "footer-coda-fade",
+    flags: { mask: true, filter: true }
+  },
+  {
+    name: "footer-light-sweep",
+    type: "footer",
+    family: "wave",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 860,
+    fallback: "footer-coda-fade",
+    flags: { mask: true, filter: true }
+  },
+  {
+    name: "footer-arc-links",
+    type: "footer",
+    family: "arc",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 840,
+    fallback: "footer-coda-fade",
+    flags: {}
+  },
+  {
+    name: "footer-heart-orbit-dock",
+    type: "footer",
+    family: "arc",
+    cost: "accent",
+    compactSafe: true,
+    requires: ["part:heart"],
+    durationMs: 840,
+    fallback: "footer-dock-rise",
+    flags: {}
+  },
+  {
+    name: "footer-line-wipe",
+    type: "footer",
+    family: "draw",
+    cost: "plain",
+    compactSafe: true,
+    requires: [],
+    durationMs: 760,
+    fallback: "footer-coda-fade",
+    flags: { clip: true }
+  },
+  {
+    name: "footer-depth-settle",
+    type: "footer",
+    family: "fold",
+    cost: "accent",
+    compactSafe: true,
+    requires: [],
+    durationMs: 820,
+    fallback: "footer-dock-rise",
+    flags: { filter: true }
+  }
+]);
+
+const BY_NAME = new Map<string, EffectProfile>();
+for (const p of CATALOG) {
+  BY_NAME.set(p.name, p);
+}
+
+/** Looks up a member's profile by name. */
+export function profileOf(name: string): EffectProfile | undefined {
+  return BY_NAME.get(name);
+}
+
+/**
+ * Returns a canonical signature string for uniqueness testing and grouping.
+ * Combines role type, family, cost, durationMs, and active flags.
+ */
+export function signatureOf(p: EffectProfile): string {
+  const flags = Object.entries(p.flags)
+    .filter(([, v]) => Boolean(v))
+    .map(([k]) => k)
+    .sort()
+    .join(",");
+  const reqs = [...p.requires].sort().join(",");
+  return `${p.type}:${p.name}:${p.family}:${p.cost}:${p.durationMs}:${reqs}:${flags}`;
+}

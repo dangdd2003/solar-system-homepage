@@ -1,0 +1,581 @@
+:root {
+  /* Pure monochrome palette — zero custom dark tints */
+  --color-bg: #000000;
+  --color-border: rgba(255, 255, 255, 0.15);
+  --color-border-hover: rgba(255, 255, 255, 0.4);
+  --color-text: #ffffff;
+  --color-text-muted: #888888;
+  --color-accent: #ffffff;
+  --color-accent-soft: rgba(255, 255, 255, 0.08);
+
+  /* Dynamic theme variables (overridden at runtime per focused planet) */
+  --planet-color: #ffffff;
+  --planet-rgb: 255, 255, 255;
+
+  /* Glass tokens — Apple Liquid Glass */
+  --glass-bg:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    rgba(8, 8, 12, 0.28);
+  --glass-bg-subtle:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(255, 255, 255, 0.06) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
+    rgba(8, 8, 12, 0.22);
+  --glass-bg-elevated:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    ),
+    rgba(8, 8, 12, 0.38);
+  --glass-blur: blur(16px) saturate(180%) contrast(105%);
+  --glass-blur-sm: blur(10px) saturate(160%) contrast(105%);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.14);
+  --glass-border-subtle: 1px solid rgba(255, 255, 255, 0.09);
+  --glass-border-hover: 1px solid rgba(255, 255, 255, 0.32);
+  --glass-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 0 rgba(255, 255, 255, 0.03),
+    0 12px 36px 0 rgba(0, 0, 0, 0.35), 0 4px 12px 0 rgba(0, 0, 0, 0.18);
+  --glass-shadow-sm:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 0 rgba(255, 255, 255, 0.02),
+    0 4px 14px 0 rgba(0, 0, 0, 0.25);
+  --glass-shadow-hover:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 0 rgba(255, 255, 255, 0.04),
+    0 16px 44px 0 rgba(0, 0, 0, 0.42), 0 6px 18px 0 rgba(0, 0, 0, 0.22);
+  /* Motion tokens — Apple Fluid standard */
+  --ease-apple: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-press: cubic-bezier(0.2, 0, 0, 1);
+  --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --anim-duration-slide: 0.38s;
+  --anim-duration-hover: 0.25s;
+
+  /* Spacing scale */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 2rem;
+  --space-lg: 4rem;
+  --space-xl: 8rem;
+
+  /* Layout */
+  --max-width: 68.75rem; /* 1100px at the default 16px root */
+  --nav-height: 4rem;
+  --radius: 999px;
+  --card-radius: 0.625rem;
+
+  /* Type */
+  /* Text roles shared by every page, so the same kind of text has one size everywhere.
+     Phones get one smaller step (below), not per-component overrides. */
+  --text-lead: 1.1rem; /* intro paragraph under a section heading */
+  --text-body: 1rem; /* copy inside boxes and cards */
+  --text-title: 1.15rem; /* box and card titles */
+  --text-label: 0.75rem; /* mono uppercase labels */
+  --text-chip: 0.78rem; /* chips and tags */
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+@media (max-width: 600px) {
+  :root {
+    --text-lead: 1rem;
+    --text-body: 0.95rem;
+    --text-title: 1.05rem;
+    --text-chip: 0.74rem;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Suppress long-press callouts only on interactive/3D surfaces; keep text selectable callouts elsewhere. */
+canvas,
+button,
+[role="button"],
+.nav,
+#solar-canvas,
+#left-controls,
+.left-controls,
+#speed-controls,
+.speed-controls,
+#info-btn-wrapper,
+#slider-container,
+#fact-card,
+#startup-screen,
+.startup-screen {
+  -webkit-touch-callout: none;
+}
+
+html {
+  /* The user's default font size (16px unless they changed it). Not tied to the viewport, so text
+     keeps one size on every screen and never rescales while the window is resized. */
+  font-size: 100%;
+  background-color: var(--color-bg);
+  scroll-behavior: smooth;
+  scroll-padding-top: var(--nav-height);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-text);
+}
+
+h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+}
+h2 {
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+}
+h3 {
+  font-size: 1.25rem;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.25s var(--ease-apple);
+}
+
+/* Plain text links only. Buttons, surfaces, chips and nav links own their hover look.
+   Hover is gated to real hover devices so a tapped link does not stay dimmed;
+   touch users get a press state instead. */
+@media (any-hover: hover) and (any-pointer: fine) {
+  :where(html:not([data-input="touch"]))
+    a:not(.btn, .surface-card, .surface-chip, .card__link, .nav a):hover {
+    opacity: 0.85;
+  }
+}
+
+/* Touch press feedback follows the input in use (html[data-input], set in BaseLayout),
+   so a finger tap on a touch laptop gets it too, and mouse clicks keep the desktop look. */
+:where(html[data-input="touch"])
+  a:not(.btn, .surface-card, .surface-chip, .card__link, .nav a):active {
+  opacity: 0.7;
+}
+
+/* Taps activate at once: no double-tap zoom wait on controls. Panels keep their
+   own scroll (touch-action auto), so vertical scroll and horizontal tag drags still work. */
+:is(a, button, .btn, .surface-card, .surface-chip, .card__link, .filter-pill, .tag-btn) {
+  touch-action: manipulation;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-border-hover);
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Phones and touch screens: a 16px backdrop blur on every glass box is the
+   heaviest compositing cost on the page. Keep the glass look with a lighter blur. */
+@media (max-width: 600px), (pointer: coarse) {
+  :root {
+    --glass-blur: blur(8px) saturate(140%);
+    --glass-blur-sm: blur(6px) saturate(130%);
+  }
+}
+
+/* Reduce Transparency: drop the blur and use opaque glass so text stays readable
+   on the starfield. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-blur: none;
+    --glass-blur-sm: none;
+    --glass-bg: rgba(8, 8, 12, 0.92);
+    --glass-bg-subtle: rgba(8, 8, 12, 0.9);
+    --glass-bg-elevated: rgba(8, 8, 12, 0.95);
+  }
+}
+
+/* Increase Contrast: stronger borders and text, and no decorative glow. */
+@media (prefers-contrast: more) {
+  :root {
+    --color-border: rgba(255, 255, 255, 0.6);
+    --color-border-hover: rgba(255, 255, 255, 1);
+    --color-text-muted: #c8c8c8;
+    --glass-border: 1px solid rgba(255, 255, 255, 0.6);
+    --glass-border-subtle: 1px solid rgba(255, 255, 255, 0.4);
+    --glass-border-hover: 1px solid rgba(255, 255, 255, 1);
+    --glass-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+    --glass-shadow-sm: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    --glass-shadow-hover: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* Clean Buttons System — Apple Liquid Glass */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 1.5rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  font-size: 0.92rem;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  cursor: pointer;
+  border: var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  transition:
+    transform 0.35s var(--ease-apple),
+    color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.3s ease,
+    background 0.3s ease;
+  user-select: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    100% 100% at 50% 0%,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  :where(html:not([data-input="touch"])) .btn:hover {
+    transform: translateY(-2px);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: var(--glass-shadow-hover);
+  }
+
+  :where(html:not([data-input="touch"])) .btn:hover::before {
+    opacity: 1;
+  }
+
+  :where(html:not([data-input="touch"])) .btn--primary:hover {
+    background:
+      radial-gradient(
+        130% 100% at 50% 0%,
+        rgba(255, 255, 255, 0.24) 0%,
+        rgba(255, 255, 255, 0.08) 100%
+      ),
+      rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.45);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
+      inset 0 -1px 0 0 rgba(255, 255, 255, 0.08),
+      0 16px 40px 0 rgba(0, 0, 0, 0.42),
+      0 6px 16px 0 rgba(0, 0, 0, 0.25);
+  }
+
+  :where(html:not([data-input="touch"])) .btn--ghost:hover {
+    color: var(--color-text);
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: var(--glass-shadow-hover);
+  }
+}
+
+/* Keyboard focus shows the same lift as hover (not gated: focus is not a pointer state). */
+.btn:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: var(--glass-shadow-hover);
+}
+
+.btn:focus-visible::before {
+  opacity: 1;
+}
+
+.btn--primary:focus-visible {
+  background:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      rgba(255, 255, 255, 0.24) 0%,
+      rgba(255, 255, 255, 0.08) 100%
+    ),
+    rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.08),
+    0 16px 40px 0 rgba(0, 0, 0, 0.42),
+    0 6px 16px 0 rgba(0, 0, 0, 0.25);
+}
+
+.btn--ghost:focus-visible {
+  color: var(--color-text);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: var(--glass-shadow-hover);
+}
+
+/* Press composes with the lift instead of dropping it. */
+.btn:active {
+  transform: translateY(-1px) scale(0.96);
+  transition: transform 0.1s var(--ease-press);
+}
+
+/* =========================================================================
+   Shared interaction contract
+   Components keep their own base look (background, padding, radius, border).
+   These classes own hover, focus and press. The `html` prefix lifts them above
+   Astro's scoped `.x[data-astro-cid]` rules.
+   - .surface-card: glass boxes and cards (use [data-spotlight] for the glow).
+   - .surface-chip: pills, tags and list chips.
+   ========================================================================= */
+html .surface-card {
+  transition:
+    transform 0.45s var(--spring-bounce),
+    background 0.3s var(--ease-apple),
+    border-color 0.3s var(--ease-apple),
+    box-shadow 0.35s var(--ease-apple);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  html:where(:not([data-input="touch"])) .surface-card:hover {
+    transform: translateY(var(--surface-lift, -4px));
+    background: var(--glass-bg-elevated);
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: var(--glass-shadow-hover);
+  }
+}
+
+html .surface-card:is(a, button):focus-visible {
+  transform: translateY(var(--surface-lift, -4px));
+  background: var(--glass-bg-elevated);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: var(--glass-shadow-hover);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+html .surface-card:is(a, button):active {
+  transform: translateY(-1px) scale(0.985);
+  transition-duration: 0.1s;
+  transition-timing-function: var(--ease-press);
+}
+
+html .surface-chip {
+  transition:
+    transform 0.3s var(--ease-apple),
+    color 0.25s var(--ease-apple),
+    background 0.3s var(--ease-apple),
+    border-color 0.25s var(--ease-apple),
+    box-shadow 0.3s var(--ease-apple);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  html:where(:not([data-input="touch"])) .surface-chip:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+html .surface-chip:is(a, button):active {
+  transform: scale(0.95);
+  transition-duration: 0.1s;
+  transition-timing-function: var(--ease-press);
+}
+
+html .surface-chip:is(a, button):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html .surface-card:is(:hover, :active, :focus-visible),
+  html .surface-card:is(a, button):is(:hover, :active, :focus-visible),
+  html .surface-chip:is(:hover, :active),
+  html .surface-chip:is(a, button):is(:hover, :active),
+  .btn:is(:hover, :focus-visible, :active) {
+    transform: none;
+  }
+}
+
+.container {
+  width: 100%;
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding-inline: var(--space-md);
+}
+
+@media (orientation: portrait), (max-width: 600px) {
+  .container {
+    padding-inline: max(clamp(0.75rem, 4vw, var(--space-sm)), env(safe-area-inset-left, 0px));
+  }
+}
+
+/* Shared section heading; per-section margin-bottom lives in each component */
+.section__heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+}
+
+.section__num {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.section {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-block: var(--space-xl);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =========================================================================
+   Viewport resize and rotation
+   Layout snaps to its new size on every frame; no layout property (padding,
+   margin, gap, width, font-size, ...) is transitioned during a resize. Doing
+   so re-lays out the page each frame and makes content trail the window.
+   Positional smoothness comes from the viewport engine's translate-only FLIP
+   on [data-resize-flip] elements. Keep glass surfaces free of opacity, filter
+   and will-change: an ancestor with those becomes a backdrop root and the
+   backdrop-filter stops sampling the scene.
+   ========================================================================= */
+
+/* Mode toggle icon transition */
+.btn-mode-toggle svg {
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.btn-mode-toggle:active svg {
+  transform: scale(0.92);
+}
+
+/* Tooltip helper styling for control buttons */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--color-text);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+    visibility 0.25s ease;
+  z-index: 300;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  :where(html:not([data-input="touch"])) [data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip link: off-screen until focused (BaseLayout and the 404 page) */
+.skip-link {
+  position: absolute;
+  top: 0.75rem;
+  left: -9999px;
+  z-index: 10000;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  font: inherit;
+  text-decoration: none;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  left: 0.75rem;
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+/* The skip link focuses <main> (tabindex="-1"); no ring on that programmatic focus */
+main:focus {
+  outline: none;
+}
