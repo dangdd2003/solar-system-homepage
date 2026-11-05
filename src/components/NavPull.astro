@@ -1,0 +1,168 @@
+---
+/**
+ * Refresh indicator for the nav-bar pull (src/scripts/nav-pull.ts). It sits just
+ * above the page and comes into view in the gap the pull opens. Same Liquid Glass
+ * as the nav pill and the corner controls; the arc draws itself as the pull
+ * grows, in the active section's planet color, and spins while the page reloads.
+ */
+---
+
+<div class="nav-pull" data-nav-pull aria-hidden="true">
+  <svg class="nav-pull__icon" viewBox="0 0 24 24" fill="none">
+    <circle class="nav-pull__track" cx="12" cy="12" r="8"></circle>
+    <circle class="nav-pull__arc" cx="12" cy="12" r="8" pathLength="100"></circle>
+    <path class="nav-pull__head" d="M12 1.5 15.5 4 12 6.5"></path>
+  </svg>
+</div>
+
+<script>
+  import { onPageReady } from "../scripts/page-ready";
+  import { initNavPull } from "../scripts/nav-pull";
+
+  onPageReady(() => initNavPull());
+</script>
+
+<style>
+  /* While pulled, the body carries a transform, so this fixed element is placed
+     against the body: just above its top edge, revealed as the page moves down. */
+  .nav-pull {
+    --pull: 0;
+    --pull-rgb: var(--active-planet-rgb, 255, 255, 255);
+    position: fixed;
+    top: -3.5rem;
+    left: 50%;
+    z-index: 300;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-left: -1.375rem;
+    border-radius: 50%;
+    color: rgb(var(--pull-rgb));
+    /* Liquid Glass, same recipe as the nav pill and the corner controls */
+    background:
+      radial-gradient(
+        130% 100% at 50% 0%,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(255, 255, 255, 0.01) 100%
+      ),
+      rgba(8, 8, 12, 0.28);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
+      inset 0 -1px 0 0 rgba(255, 255, 255, 0.03),
+      0 12px 36px 0 rgba(0, 0, 0, 0.35),
+      0 4px 12px 0 rgba(0, 0, 0, 0.18);
+    opacity: min(1, calc(var(--pull) * 2.5));
+    scale: calc(0.72 + var(--pull) * 0.28);
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+      border-color 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  :global(html.nav-pull-active) .nav-pull {
+    visibility: visible;
+  }
+
+  :global(html.nav-pull-active) body {
+    will-change: transform;
+  }
+
+  :global(html.nav-pull-settling) body {
+    transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .nav-pull__icon {
+    width: 1.4rem;
+    height: 1.4rem;
+    overflow: visible;
+  }
+
+  .nav-pull__track,
+  .nav-pull__arc,
+  .nav-pull__head {
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .nav-pull__track {
+    opacity: 0.16;
+  }
+
+  /* The arc grows clockwise to 82% of the circle. It starts 18% before 12 o'clock
+     (-90deg + 0.82 turn = -25.2deg), so a full pull ends it exactly at 12 o'clock,
+     where the arrowhead lands. */
+  .nav-pull__arc {
+    stroke-dasharray: 100;
+    stroke-dashoffset: calc(100 - var(--pull) * 82);
+    transform: rotate(-25.2deg);
+    transform-origin: 12px 12px;
+  }
+
+  .nav-pull__head {
+    opacity: 0;
+    transform: scale(0.4);
+    transform-origin: 12px 4px;
+    transition:
+      opacity 0.2s ease,
+      transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Past the threshold: the arrowhead lands, the rim lights in the planet color. */
+  .nav-pull.is-armed,
+  :global(html.nav-pull-refreshing) .nav-pull {
+    border-color: rgba(var(--pull-rgb), 0.45);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.32),
+      inset 0 -1px 0 0 rgba(255, 255, 255, 0.04),
+      0 0 18px 0 rgba(var(--pull-rgb), 0.32),
+      0 12px 36px 0 rgba(0, 0, 0, 0.35);
+  }
+
+  .nav-pull.is-armed .nav-pull__head {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  :global(html.nav-pull-refreshing) .nav-pull__icon {
+    animation: nav-pull-spin 0.9s linear infinite;
+  }
+
+  :global(html.nav-pull-refreshing) .nav-pull__arc {
+    stroke-dashoffset: 30;
+  }
+
+  :global(html.nav-pull-refreshing) .nav-pull__head {
+    opacity: 0;
+  }
+
+  @keyframes nav-pull-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav-pull {
+      scale: none;
+    }
+
+    :global(html.nav-pull-refreshing) .nav-pull__icon {
+      animation: none;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .nav-pull {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      background: rgb(16, 16, 20);
+    }
+  }
+</style>

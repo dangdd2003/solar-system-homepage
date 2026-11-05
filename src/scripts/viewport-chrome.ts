@@ -1,38 +1,57 @@
 /**
- * Measures how much of the full-bleed stage sits behind the bottom browser
- * toolbar and publishes it as --chrome-bottom on <html>.
+ * Publishes how much of the full-bleed stage (scene canvas + panel shell) sits
+ * under the bottom browser toolbar.
  *
- * The stage (canvas + panel shell) is sized to the large viewport so it paints
- * behind the status bar and Safari's floating toolbar. Fixed controls, by
- * contrast, are laid out in the fixed containing block, which ends above the
- * toolbar. The difference between the two is the strip a panel must keep clear
- * so its last line and footer land beside the controls, not under the toolbar.
- * CSS carries an lvh - svh estimate; this replaces it with the real value.
+ * In iOS Safari tabs (iOS 26+) page content shows through the floating
+ * toolbar, but a box sized to 100lvh stops short of the screen's bottom edge.
+ * So on iOS Safari the stage bleeds below the viewport by --bleed-bottom, set
+ * before first paint by the inline head script in BaseLayout.astro. The document
+ * never scrolls (panels.css locks it), so the bleed only adds pixels under the
+ * toolbar, and the camera frames the visible part only (CameraRig.setFrame), so
+ * the bleed does not zoom the scene.
+ *
+ * --chrome-bottom is the part of the stage below the fixed containing block,
+ * where the corner controls live. Panels pad by it so their last line and
+ * footer stay above the toolbar.
  */
+
+// Fixed elements at the screen edges make iOS Safari paint solid bars; keep the probe clear.
+const PROBE_INSET_PX = 12;
+
+/** Stage bleed below the visible viewport, in CSS px (0 outside iOS Safari tabs). */
+export function stageBleedPx(): number {
+  const value = getComputedStyle(document.documentElement).getPropertyValue("--bleed-bottom");
+  return parseFloat(value) || 0;
+}
+
 export function initViewportChrome(): void {
   const root = document.documentElement;
   const stage = document.getElementById("main-content");
   if (!stage) return;
 
-  // Zero width: Safari ignores narrow fixed elements when tinting its toolbars.
+  // Narrow and inset from both edges, so Safari never samples it for toolbar tinting.
   const probe = document.createElement("div");
   probe.setAttribute("aria-hidden", "true");
-  probe.style.cssText =
-    "position:fixed;top:0;bottom:0;left:0;width:0;visibility:hidden;pointer-events:none;";
+  probe.style.cssText = `position:fixed;top:${PROBE_INSET_PX}px;bottom:${PROBE_INSET_PX}px;left:0;width:0;visibility:hidden;pointer-events:none;`;
   document.body.appendChild(probe);
 
-  let frame = 0;
   const measure = (): void => {
-    frame = 0;
-    const hidden = Math.max(0, Math.round(stage.clientHeight - probe.clientHeight));
+    const fixedBottom = probe.getBoundingClientRect().bottom + PROBE_INSET_PX;
+    const hidden = Math.max(0, Math.round(stage.getBoundingClientRect().bottom - fixedBottom));
     root.style.setProperty("--chrome-bottom", `${hidden}px`);
   };
-  const schedule = (): void => {
-    if (!frame) frame = requestAnimationFrame(measure);
+
+  let frame = 0;
+  const update = (): void => {
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      measure();
+    });
   };
 
   measure();
-  window.addEventListener("resize", schedule, { passive: true });
-  window.visualViewport?.addEventListener("resize", schedule, { passive: true });
-  window.addEventListener("orientationchange", schedule, { passive: true });
+  window.addEventListener("resize", update, { passive: true });
+  window.visualViewport?.addEventListener("resize", update, { passive: true });
+  window.addEventListener("pageshow", update);
 }

@@ -179,7 +179,11 @@ export function attachPlanetHalo(
     scale.setFromMatrixScale(body.matrixWorld);
     const worldRadius = radius * Math.max(scale.x, scale.y, scale.z);
     const distance = camera.getWorldPosition(cameraPosition).distanceTo(center);
-    planetHaloMetrics(worldRadius, distance, size.y, camera.getEffectiveFOV(), metrics);
+    // Frame height, not canvas height: the canvas may bleed below the frame (CameraRig.setFrame).
+    const frameHeight = camera.view?.enabled
+      ? (camera.view.fullHeight * size.y) / camera.view.height
+      : size.y;
+    planetHaloMetrics(worldRadius, distance, frameHeight, camera.getEffectiveFOV(), metrics);
     uniforms.uRadius.value = worldRadius;
     uniforms.uWidth.value = metrics.widthWorld;
     // Flat bodies retain a faint halo if their texture is pending or unavailable.

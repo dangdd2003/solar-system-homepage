@@ -5,6 +5,7 @@ import "../styles/reveal.css";
 import StartupScreen from "../components/StartupScreen.astro";
 import SolarSystem from "../components/SolarSystem.astro";
 import Nav from "../components/Nav.astro";
+import NavPull from "../components/NavPull.astro";
 import Footer from "../components/Footer.astro";
 import SocialMeta from "../components/SocialMeta.astro";
 import { buildSocialMeta, type SocialImage, type SocialMetaInput } from "../utils/social";
@@ -120,6 +121,19 @@ const personJsonLd = JSON.stringify({
 
     <script is:inline>
       document.documentElement.classList.add("js");
+      // iOS Safari tabs: the stage bleeds under the floating toolbar (see viewport-chrome.ts).
+      // Set before first paint so the canvas and the camera framing start at their final size.
+      (function () {
+        const nav = navigator;
+        const iOS =
+          /iPhone|iPod|iPad/.test(nav.userAgent) ||
+          (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+        const standalone =
+          nav.standalone === true || matchMedia("(display-mode: standalone)").matches;
+        if ((iOS && !standalone) || /[?&]vpbleed\b/.test(location.search)) {
+          document.documentElement.style.setProperty("--bleed-bottom", "120px");
+        }
+      })();
       // Input modality: html[data-input] is "touch" after a finger tap and "mouse" after a
       // mouse or pen moves, so cursor-only effects (hover, spotlight) follow the input the
       // visitor is using right now, including a mouse or trackpad attached to a touch device.
@@ -177,6 +191,7 @@ const personJsonLd = JSON.stringify({
     <StartupScreen />
     <SolarSystem />
     <Nav />
+    <NavPull />
     <main id="main-content" tabindex="-1">
       <slot />
     </main>

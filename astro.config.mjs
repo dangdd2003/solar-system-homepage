@@ -10,5 +10,8 @@ export default defineConfig({
     port: Number(process.env.PORT) || 4321,
     // Applies to both `astro dev` and `astro preview`; vite.server.allowedHosts covers dev only
     allowedHosts: true
+  },
+  devToolbar: {
+    enabled: false
   }
 });

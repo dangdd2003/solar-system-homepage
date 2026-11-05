@@ -24,6 +24,7 @@ import { CameraRig, type FocusState } from "./camera-rig";
 import { CameraControls } from "./camera-controls";
 import { bodyRadiusOf, createHoverGlow, type HoverGlow } from "./hover-glow";
 import { RenderLoop } from "./render-loop";
+import { stageBleedPx } from "../scripts/viewport-chrome";
 import { buildJobs, loadAndApplyTextures, type TextureJobId } from "./texture-loader";
 import type { EclipseShadowHandle } from "./eclipse-shadow";
 import { ENTRANCE_MAX_WAIT_MS, EntranceAnimator, ownerOf, releaseJob } from "./entrance";
@@ -323,7 +324,9 @@ export class SolarSystem {
       compile: () => this.compileScene()
     });
     try {
-      this.loop.onResize((w, h) => this.rig.setAspect(w / h));
+      // The canvas may run past the visible viewport under the iOS Safari toolbar
+      // (--bleed-bottom); frame the visible part only.
+      this.loop.onResize((w, h) => this.rig.setFrame(w, h, stageBleedPx()));
 
       // Soft glow hugging the body under the pointer. Hover only fires while
       // the controls are enabled, so it appears in orbit mode alone.
@@ -424,6 +427,16 @@ export class SolarSystem {
   }
 
   /**
+   * Height in CSS px of the camera's frame: the visible viewport. The canvas can be
+   * taller (the bleed under the iOS Safari toolbar, see CameraRig.setFrame); pixel
+   * sizes derived from the field of view must use this, not the canvas height.
+   */
+  private frameHeight(): number {
+    const view = this.rig.camera.view;
+    return view?.enabled ? view.fullHeight : this.loop.getRect().height;
+  }
+
+  /**
    * Largest radius, in CSS px from the viewport centre, that keeps every body
    * the camera currently shows textured. A body with pending texture jobs caps
    * the limit at its near edge (minus a small margin). Negative when a pending
@@ -440,7 +453,7 @@ export class SolarSystem {
     const viewCy = window.innerHeight / 2;
     // Pixels per unit of tangent at distance 1, for the vertical field of view.
     const halfTan = Math.tan((camera.fov * Math.PI) / 360);
-    const pxPerTangent = rect.height / 2 / halfTan;
+    const pxPerTangent = this.frameHeight() / 2 / halfTan;
 
     let limit = Infinity;
     for (const gate of this.revealGates) {
@@ -823,9 +836,9 @@ export class SolarSystem {
     // use fresh positions.
     this.rig.update(elapsed);
     // The Sun's halo sizes itself for the camera's distance, so it follows the rig.
-    this.sun.updateHalo(this.rig.camera, this.loop.getRect().height);
+    this.sun.updateHalo(this.rig.camera, this.frameHeight());
     // The glow tracks its body and sizes itself for the camera, so it goes last.
-    this.hoverGlow.update(this.rig.camera, delta, this.loop.getRect().height);
+    this.hoverGlow.update(this.rig.camera, delta, this.frameHeight());
   }
 
   /** Raycast at a client-space point, returning the body under it (if any). */

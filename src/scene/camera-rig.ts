@@ -503,6 +503,22 @@ export class CameraRig {
   }
 
   /**
+   * Canvas size from the render loop. `bleed` is the strip of canvas below the
+   * visible viewport (under the iOS Safari toolbar). The projection frames only
+   * the visible width x (height - bleed) area, anchored at the top, and the bleed
+   * rows just extend the view downward, so the bleed never zooms or shifts the scene.
+   */
+  setFrame(width: number, height: number, bleed: number): void {
+    const frameHeight = Math.max(1, height - Math.max(0, bleed));
+    if (frameHeight < height) {
+      this.camera.setViewOffset(width, frameHeight, 0, 0, width, height);
+    } else {
+      this.camera.clearViewOffset();
+    }
+    this.setAspect(width / frameHeight);
+  }
+
+  /**
    * Viewport aspect (width / height) from the render loop. Re-fits the overview
    * distance, retargets overview flights, and eases a resting overview onto its
    * new framing (the first fit and reduced motion snap immediately).

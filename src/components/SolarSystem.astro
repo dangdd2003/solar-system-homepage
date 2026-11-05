@@ -145,13 +145,14 @@
 
 <style>
   /*
-   * The canvas fills the full-bleed stage (--stage-height, the large viewport), so the
-   * scene paints behind the status bar and the browser toolbar. It is absolute, not fixed:
-   * iOS 26 Safari turns full-width fixed layers at the screen edges into solid toolbar
-   * bands. The stage height does not change when the toolbar shows or hides, so the
-   * buffer is not resized while scrolling. The renderer sizes its buffer from
-   * clientHeight, so the buffer and the CSS box always agree. 100vw is avoided because it
-   * includes the scrollbar gutter. No
+   * The canvas fills the full-bleed stage (--stage-full, the large viewport plus the bottom
+   * bleed), so the scene paints behind the browser toolbar. It is absolute, not fixed:
+   * iOS 26 Safari turns full-width fixed layers at the bottom edge into a solid toolbar
+   * band. The camera frames only the visible part (CameraRig.setFrame), so the bleed
+   * does not zoom the scene. The stage height does not change when the toolbar shows or
+   * hides, so the buffer is not resized while scrolling. The renderer sizes its buffer
+   * from clientHeight, so the buffer and the CSS box always agree. 100vw is avoided
+   * because it includes the scrollbar gutter. No
    * transition, filter or will-change here: a size or compositing change must land in the
    * same frame as the buffer it describes.
    */
@@ -160,7 +161,7 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: var(--stage-height);
+    height: var(--stage-full);
     z-index: 0;
     display: block;
     touch-action: none;
