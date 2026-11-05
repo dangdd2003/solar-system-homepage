@@ -1,0 +1,110 @@
+# Travis CI pipeline: test -> container smoke test -> publish to Docker Hub.
+# Docs: https://docs.travis-ci.com/user/customizing-the-build/
+#
+# Required repository settings (Travis -> repo -> More options -> Settings -> Environment Variables),
+# with "Display value in build log" OFF and branch restricted to `main`:
+#   DOCKERHUB_USERNAME  Docker Hub user or org that owns the repository
+#   DOCKERHUB_TOKEN     Docker Hub personal access token, scope "Read & Write"
+# Optional:
+#   DOCKERHUB_REPO      image repository name (default: solar-system-homepage)
+
+version: ~> 1.0 # opt in to build config validation
+
+os: linux
+dist: noble # Ubuntu 24.04, ships Docker 28 (with buildx) + docker compose v2
+language: node_js
+node_js: "26" # latest LTS; matches Dockerfile and GitHub Actions
+cache: npm
+
+# Only build main, PRs and version tags; other pushed branches are covered by the PR build.
+if: branch = main OR type = pull_request OR tag =~ ^v\d+\.\d+\.\d+$
+
+git:
+  depth: 10
+
+stages:
+  - name: test
+  - name: container
+  - name: publish
+    if: fork = false AND type != pull_request AND (branch = main OR tag =~ ^v\d+\.\d+\.\d+$)
+
+jobs:
+  fast_finish: true
+  include:
+    # ---- test: static checks + production build ----
+    - stage: test
+      name: "Verify + build (Node 26 LTS)"
+      script:
+        - npm run format:check
+        - npm run check
+        - npm run lint
+        - npm run build
+
+    # ---- container: build the real image and probe it, no secrets needed (runs on PRs) ----
+    - stage: container
+      name: "Docker image smoke test"
+      services: docker
+      install: skip # the Dockerfile runs npm ci itself
+      env: BASE=http://127.0.0.1:8080
+      before_script:
+        - docker build -f .github/deployment/Dockerfile -t homepage:smoke .
+        # Same hardening as .github/deployment/compose.yaml
+        - |
+          docker run -d --name homepage -p 127.0.0.1:8080:8080 \
+            --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+            --user 65532:65532 --memory 128m --pids-limit 64 homepage:smoke
+        - timeout 30 bash -c "until curl -fsS $BASE/health; do sleep 1; done"
+      script:
+        - test "$(curl -s -o /dev/null -w '%{http_code}' $BASE/health)" = 200
+        - test "$(curl -s -o /dev/null -w '%{http_code}' $BASE/)" = 200
+        - test "$(curl -s -o /dev/null -w '%{http_code}' $BASE/does-not-exist)" = 404
+        - |
+          curl -fsS -o /dev/null -D - "$BASE/" | grep -qi '^cache-control: no-cache'
+        - |
+          curl -fsS -o /dev/null -D - "$BASE/" | grep -qi '^x-content-type-options: nosniff'
+        # Pre-compressed assets from the Dockerfile must be served as-is.
+        - |
+          curl -fsS -o /dev/null -D - -H 'Accept-Encoding: br' "$BASE/" | grep -qi '^content-encoding: br'
+        - |
+          curl -fsS -o /dev/null -D - -H 'Accept-Encoding: gzip' "$BASE/" | grep -qi '^content-encoding: gzip'
+      after_failure: docker logs homepage
+      after_script: docker rm -f homepage
+
+    # ---- publish: multi-arch build and push to Docker Hub ----
+    # No QEMU needed: the Dockerfile's build stage runs on $BUILDPLATFORM and the
+    # final scratch stage only COPYs files, so no target-platform RUN step executes.
+    - stage: publish
+      name: "Push to Docker Hub (amd64 + arm64)"
+      services: docker
+      install: skip
+      before_script:
+        - docker buildx version
+        - docker buildx create --name travis --driver docker-container --use --bootstrap
+        - echo "$DOCKERHUB_TOKEN" | docker login docker.io -u "$DOCKERHUB_USERNAME" --password-stdin
+        # Tags mirror .github/workflows/build.yaml: latest + sha-<short>; vX.Y.Z tags add X.Y.Z and X.Y.
+        - |
+          export IMAGE="docker.io/${DOCKERHUB_USERNAME}/${DOCKERHUB_REPO:-solar-system-homepage}"
+          export TAGS="--tag ${IMAGE}:sha-${TRAVIS_COMMIT:0:7}"
+          if [ -n "$TRAVIS_TAG" ]; then
+            V="${TRAVIS_TAG#v}"
+            TAGS="$TAGS --tag ${IMAGE}:${V} --tag ${IMAGE}:${V%.*}"
+          else
+            TAGS="$TAGS --tag ${IMAGE}:latest"
+          fi
+          echo "Publishing: $TAGS"
+      script:
+        # Registry cache replaces the GitHub Actions `type=gha` cache.
+        - |
+          docker buildx build \
+            --file .github/deployment/Dockerfile \
+            --platform linux/amd64,linux/arm64 \
+            $TAGS \
+            --label "org.opencontainers.image.source=https://github.com/${TRAVIS_REPO_SLUG}" \
+            --label "org.opencontainers.image.revision=${TRAVIS_COMMIT}" \
+            --cache-from "type=registry,ref=${IMAGE}:buildcache" \
+            --cache-to "type=registry,ref=${IMAGE}:buildcache,mode=max,ignore-error=true" \
+            --provenance=mode=max \
+            --sbom=true \
+            --push \
+            .
+      after_script: docker logout docker.io
