@@ -145,19 +145,22 @@
 
 <style>
   /*
-   * The canvas box is exactly the fixed viewport box, and the renderer sizes its buffer
-   * from clientHeight, so the two always agree. 100vw includes the scrollbar gutter and
-   * 100vh on mobile is the large viewport (taller than the visible area while the URL bar
-   * is shown), either of which makes the buffer and the CSS box disagree and stretches
-   * frames during resize. Percentages of the fixed containing block avoid both. No
+   * The canvas fills the full-bleed stage (--stage-height, the large viewport), so the
+   * scene paints behind the status bar and the browser toolbar. It is absolute, not fixed:
+   * iOS 26 Safari turns full-width fixed layers at the screen edges into solid toolbar
+   * bands. The stage height does not change when the toolbar shows or hides, so the
+   * buffer is not resized while scrolling. The renderer sizes its buffer from
+   * clientHeight, so the buffer and the CSS box always agree. 100vw is avoided because it
+   * includes the scrollbar gutter. No
    * transition, filter or will-change here: a size or compositing change must land in the
    * same frame as the buffer it describes.
    */
   #solar-canvas {
-    position: fixed;
-    inset: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 100%;
+    height: var(--stage-height);
     z-index: 0;
     display: block;
     touch-action: none;
@@ -482,8 +485,8 @@
 
   #texture-loading {
     position: fixed;
-    top: calc(var(--nav-height) + 0.75rem);
-    right: 1rem;
+    top: calc(var(--nav-height) + 0.75rem + env(safe-area-inset-top, 0px));
+    right: max(1rem, env(safe-area-inset-right, 0px));
     z-index: 200;
     max-width: calc(100vw - 2rem);
     font-family: var(--font-mono);

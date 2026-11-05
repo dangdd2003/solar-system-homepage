@@ -83,7 +83,7 @@ const personJsonLd = JSON.stringify({
     <SocialMeta meta={socialMeta} />
 
     <!-- Theme & Color Support -->
-    <meta name="theme-color" content="#08080c" />
+    <meta name="theme-color" content="#000000" />
     <meta name="color-scheme" content="dark" />
 
     <!-- Startup textures start downloading at HTML parse: the Sun first, then the inner planets the aperture reveals next.
@@ -186,7 +186,9 @@ const personJsonLd = JSON.stringify({
       import { onPageReady } from "../scripts/page-ready";
       import { initReveal } from "../scripts/reveal";
       import { initViewportMotion } from "../scripts/viewport-motion";
+      import { initViewportChrome } from "../scripts/viewport-chrome";
 
+      initViewportChrome();
       onPageReady(() => initReveal());
       onPageReady(() => initViewportMotion());
     </script>

@@ -2,9 +2,16 @@
    Panel System: Isolated Tab-Based Panels with Internal Scrolling
    ========================================================================= */
 
+/* The shell is absolute, not fixed. iOS 26 Safari tints its status bar and
+   toolbar from full-width fixed layers touching the screen edges and paints them
+   as solid bands; an absolute layer is ordinary page content, so it draws under
+   the translucent bars and the page reaches every edge. */
 html.js main {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--stage-height);
   pointer-events: none;
   z-index: 5;
 }
@@ -26,6 +33,7 @@ html.js [data-planet-panel] {
   align-items: center;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   opacity: 0;
   visibility: hidden;
   transition:
@@ -63,8 +71,10 @@ html.js [data-planet-panel].is-visible {
 
 html.js .section[data-planet-panel] {
   min-height: 100%;
-  padding-top: calc(var(--nav-height) + var(--space-md));
-  padding-bottom: 0;
+  padding-top: calc(var(--nav-height) + var(--space-md) + env(safe-area-inset-top, 0px));
+  /* The stage runs behind the bottom toolbar; this keeps the last line of every
+     panel, and the vertical centring of short panels, inside the visible area. */
+  padding-bottom: var(--chrome-bottom);
   padding-inline: 0;
   width: 100%;
 }

@@ -65,6 +65,12 @@
   /* Layout */
   --max-width: 68.75rem; /* 1100px at the default 16px root */
   --nav-height: 4rem;
+  /* Full-bleed stage: the largest viewport, so the scene also paints behind the
+     status bar and the Safari toolbar instead of Safari filling them with a band. */
+  --stage-height: 100vh;
+  /* Part of the stage hidden behind the bottom browser toolbar. The layout script
+     replaces this estimate with a measured value (see BaseLayout.astro). */
+  --chrome-bottom: 0px;
   --radius: 999px;
   --card-radius: 0.625rem;
 
@@ -119,6 +125,13 @@ button,
   -webkit-touch-callout: none;
 }
 
+@supports (height: 100lvh) {
+  :root {
+    --stage-height: 100lvh;
+    --chrome-bottom: max(0px, calc(100lvh - 100svh));
+  }
+}
+
 html {
   /* The user's default font size (16px unless they changed it). Not tied to the viewport, so text
      keeps one size on every screen and never rescales while the window is resized. */
@@ -126,6 +139,8 @@ html {
   background-color: var(--color-bg);
   scroll-behavior: smooth;
   scroll-padding-top: var(--nav-height);
+  /* No rubber-band at the document edges: the page never shows a gap above or below the stage. */
+  overscroll-behavior: none;
 }
 
 body {
@@ -134,6 +149,7 @@ body {
   color: var(--color-text);
   line-height: 1.6;
   min-height: 100vh;
+  min-height: var(--stage-height);
   -webkit-font-smoothing: antialiased;
 }
 

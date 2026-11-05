@@ -44,10 +44,41 @@ const year = new Date().getFullYear();
     margin-top: var(--space-lg);
   }
 
-  /* Phones: clear the bottom corner controls (SolarSystem.astro) so the text sits above them. */
+  /* Phones: the footer shares one row with the bottom corner controls (SolarSystem.astro)
+     instead of stacking above them. The row matches the controls' height and bottom offset,
+     and the side padding keeps the text clear of both corners, so scrolling to the end puts
+     the credit between the two buttons with no dead strip under it. The panel's own
+     --chrome-bottom padding already lifts this row above the browser toolbar. */
   @media (orientation: portrait), (max-width: 600px) {
     .footer--panel {
-      padding-bottom: calc(3rem + 2 * max(var(--space-xs), env(safe-area-inset-bottom, 0.5rem)));
+      --footer-row: 3.25rem;
+      --footer-edge: max(var(--space-xs), env(safe-area-inset-bottom, 0.5rem));
+      /* Collapsed speed control (~5.6rem) plus its edge gap and a breathing gap. */
+      --footer-side: calc(5.75rem + 2 * var(--space-xs));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(var(--footer-row) + var(--footer-edge));
+      margin-top: var(--space-md);
+      padding-top: 0;
+      padding-bottom: var(--footer-edge);
+      padding-inline: max(var(--footer-side), env(safe-area-inset-left, 0px));
+    }
+
+    .footer--panel .footer__copy {
+      min-height: var(--footer-row);
+      font-size: 0.75rem;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow-wrap: normal;
+    }
+  }
+
+  /* Very narrow phones: the one-line credit no longer fits between the corners, so it wraps. */
+  @media (max-width: 359px) {
+    .footer--panel .footer__copy {
+      white-space: normal;
+      flex-wrap: wrap;
     }
   }
 
