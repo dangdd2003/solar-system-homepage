@@ -17,7 +17,7 @@ interface Props {
   description?: string;
   /** Link-preview headline; defaults to the descriptive site headline. */
   socialTitle?: string;
-  /** Link-preview images: primary 1.91:1 card first, then fallbacks. Defaults to the site cards. */
+  /** Link-preview images: primary 1.91:1 card first. Defaults to the site card. */
   images?: readonly [SocialImage, ...SocialImage[]];
   type?: SocialMetaInput["type"];
 }

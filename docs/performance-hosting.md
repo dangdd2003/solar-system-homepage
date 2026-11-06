@@ -44,5 +44,5 @@ review.
   images are generated at build time by `src/utils/og-image.ts` and served through
   `src/pages/[card].jpg.ts`. The existing Sharp encoder already uses progressive
   mozjpeg (`quality: 84`, `progressive: true`, `mozjpeg: true`). Any further size or
-  quality tuning belongs in that generator and should be validated against both
-  generated cards, rather than replacing an assumed static public image.
+  quality tuning belongs in that generator and should be validated against the
+  generated card, rather than replacing an assumed static public image.
