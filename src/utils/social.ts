@@ -28,7 +28,7 @@ export interface SocialMetaInput {
   description: string;
   /** Path of the page being described; resolved against `site` for og:url. */
   pathname: string;
-  /** Primary 1.91:1 card image followed by optional fallbacks (e.g. a square variant). */
+  /** Primary 1.91:1 card image. Extra entries become extra og:image tags, which Discord shows as a cropped gallery. */
   images: readonly [SocialImage, ...SocialImage[]];
   type?: "website" | "article" | "profile";
   siteName?: string;

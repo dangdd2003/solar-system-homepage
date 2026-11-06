@@ -15,9 +15,10 @@ import type { SocialImage } from "./social";
 
 const ROOT = process.cwd();
 const FONT_DIR = join(ROOT, "node_modules/@fontsource");
-const AVATAR_PATH = join(ROOT, "src/assets/avatar.jpg");
-/** Head-and-shoulders square inside src/assets/avatar.jpg (1771x1772). */
-const AVATAR_CROP = { left: 260, top: 150, width: 520, height: 520 };
+/** Preview card only; the site itself keeps src/assets/avatar.jpg. */
+const AVATAR_PATH = join(ROOT, "src/assets/og-wolf.jpg");
+/** Head square inside src/assets/og-wolf.jpg. */
+const AVATAR_CROP = { left: 620, top: 90, width: 1120, height: 1120 };
 
 const CONTENT = {
   name: "Doan Dinh Dang",
@@ -45,33 +46,24 @@ interface Layout {
   centerY: number;
 }
 
-export type OgCardId = "og-image" | "og-image-square";
+export type OgCardId = "og-image";
 
-/** Wide 1.91:1 card first (Facebook, LinkedIn, X large card), square fallback second (WhatsApp, Zalo, iMessage thumbnails). */
+/**
+ * One wide 1.91:1 card. A second og:image makes Discord render a cropped two-tile gallery.
+ * Square-thumbnail apps (WhatsApp, Zalo, iMessage) center-crop it, so the name stays inside the middle 630px.
+ */
 export const OG_CARDS = {
   "og-image": {
     layout: {
       width: 1200,
       height: 630,
       avatar: 172,
-      name: 84,
+      name: 76,
       tagline: 30,
       domain: 26,
       centerY: 0.5
     },
     alt: "Doan Dinh Dang (Đ-Dev), System & Cloud Engineer in Hanoi, over a 3D solar system"
-  },
-  "og-image-square": {
-    layout: {
-      width: 1200,
-      height: 1200,
-      avatar: 264,
-      name: 100,
-      tagline: 36,
-      domain: 32,
-      centerY: 0.5
-    },
-    alt: "Đ-Dev, portfolio of Doan Dinh Dang"
   }
 } as const satisfies Record<OgCardId, { layout: Layout; alt: string }>;
 
