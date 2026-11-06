@@ -28,7 +28,12 @@ const eventHorizon: EffectBuilder = (el, ctx) => {
       "--rv-s": tw(1.08, 1, 900, "outExpo"),
       filter: ctx.compact
         ? tw("brightness(1.5)", "brightness(1)", 600, "outQuad")
-        : tw("blur(6px) brightness(1.6)", "blur(0px) brightness(1)", 800, "outQuart")
+        : tw(
+            ctx.lowFx ? "brightness(1.6)" : "blur(6px) brightness(1.6)",
+            ctx.lowFx ? "brightness(1)" : "blur(0px) brightness(1)",
+            800,
+            "outQuart"
+          )
     },
     0
   );
