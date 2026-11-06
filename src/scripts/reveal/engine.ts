@@ -11,7 +11,7 @@
 
 import { initAmbient } from "./ambient";
 import { drive } from "./clock";
-import { runEffect } from "./effects";
+import { preloadEffects, runEffect } from "./effects";
 import {
   clearFxAttrs,
   clearPrimedRects,
@@ -319,6 +319,31 @@ function watchPanel(panel: HTMLElement, loadSeed: number, options: RevealOptions
         )
       : null;
 
+  const measureItems = (): PlanItem[] =>
+    items.map((el, domRank) => {
+      const type = parseType(el.dataset.reveal);
+      return {
+        id: el.id || `rv-${domRank}`,
+        type,
+        geometry: measureHost(el, type ?? "text"),
+        domRank,
+        extraDelayMs: Number(el.dataset.revealDelay) || 0
+      };
+    });
+
+  const warmPlan = (plan: EntryPlan | null): void => {
+    void preloadEffects(
+      items.map((el, index) => {
+        const type = parseType(el.dataset.reveal);
+        return type
+          ? (plan?.byId.get(el.id || `rv-${index}`)?.played ??
+              rolls.get(type)?.effect ??
+              el.dataset.reveal)
+          : el.dataset.reveal;
+      })
+    );
+  };
+
   const activate = (): void => {
     if (active) return;
     active = true;
@@ -338,18 +363,7 @@ function watchPanel(panel: HTMLElement, loadSeed: number, options: RevealOptions
       entryNo++;
       rolls = roller.roll(types, profile.compact);
 
-      const planItems: PlanItem[] = items.map((el, domRank) => {
-        const type = parseType(el.dataset.reveal);
-        const geometry = measureHost(el, type ?? "text");
-        const extraDelayMs = Number(el.dataset.revealDelay) || 0;
-        return {
-          id: el.id || `rv-${domRank}`,
-          type,
-          geometry,
-          domRank,
-          extraDelayMs
-        };
-      });
+      const planItems = measureItems();
 
       currentPlan = planEntry({
         loadSeed,
@@ -385,6 +399,11 @@ function watchPanel(panel: HTMLElement, loadSeed: number, options: RevealOptions
       }
       needsPlan = false;
     }
+
+    // Start only the selected role/generation downloads before the observer's
+    // next delivery. A cold or failed pool uses the synchronous no-effect path;
+    // completion of this promise must never animate a stale or focused host.
+    warmPlan(currentPlan);
 
     const pending = items.filter((el) => !el.classList.contains(REVEALED_CLASS));
     if (io) {
@@ -438,7 +457,29 @@ function watchPanel(panel: HTMLElement, loadSeed: number, options: RevealOptions
     finish(el);
   };
 
-  const sync = (): void => (isReady(panel) ? activate() : deactivate());
+  const sync = (): void => {
+    if (isReady(panel)) {
+      activate();
+      return;
+    }
+    deactivate();
+    if (needsPlan && panel.classList.contains("is-visible")) {
+      // The hero is visible behind its startup gate. Predict its selected pools
+      // during that existing wait, without advancing entry/RNG/history or writing
+      // to a host. Activation still measures and plans afresh at the usual time.
+      warmPlan(
+        planEntry({
+          loadSeed,
+          panelKey,
+          entryNo: entryNo + 1,
+          history,
+          tier: resolveTier(readTierEnv()),
+          items: measureItems(),
+          forced: getForcedMap()
+        })
+      );
+    }
+  };
 
   const mo = new MutationObserver(sync);
   mo.observe(panel, { attributes: true, attributeFilter: ["class"] });

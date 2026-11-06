@@ -35,7 +35,7 @@ const heartbeatPulsar: EffectBuilder = (el, ctx) => {
     };
     tl.add(
       heart,
-      ctx.compact
+      ctx.compact || ctx.lowFx
         ? beat
         : {
             ...beat,

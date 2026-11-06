@@ -3,6 +3,7 @@
   "singleQuote": false,
   "trailingComma": "none",
   "printWidth": 100,
+  "endOfLine": "auto",
   "bracketSpacing": true,
   "arrowParens": "always",
   "plugins": ["prettier-plugin-astro"],

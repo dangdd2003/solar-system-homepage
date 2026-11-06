@@ -58,7 +58,12 @@ const meteorShower: EffectBuilder = (el, ctx) => {
       y: tw("-1.1em", "0em", 560, "outExpo"),
       filter: ctx.compact
         ? tw("brightness(1.8)", "brightness(1)", 420, "outQuad")
-        : tw("blur(3px) brightness(2)", "blur(0px) brightness(1)", 480, "outQuart")
+        : tw(
+            ctx.lowFx ? "brightness(2)" : "blur(3px) brightness(2)",
+            ctx.lowFx ? "brightness(1)" : "blur(0px) brightness(1)",
+            480,
+            "outQuart"
+          )
     },
     partStagger(ctx, step, 60, "random")
   );
@@ -151,7 +156,7 @@ const redshift: EffectBuilder = (el, ctx) => {
       color: tw("rgb(255, 92, 64)", target, 700, "outQuad"),
       x: tw(ctx.compact ? "0.6em" : "1.2em", "0em", 700, "outExpo"),
       opacity: tw(0, 1, 300, "outQuad"),
-      ...(ctx.compact ? {} : { filter: tw("blur(4px)", "blur(0px)", 500, "outQuart") })
+      ...(ctx.compact || ctx.lowFx ? {} : { filter: tw("blur(4px)", "blur(0px)", 500, "outQuart") })
     },
     partStagger(ctx, fitStep(pieces.length, 70, 260), 40, "first")
   );
@@ -172,7 +177,12 @@ const deepSpaceSignal: EffectBuilder = (el, ctx) => {
       ]),
       filter: ctx.compact
         ? tw("brightness(2)", "brightness(1)", 360, "outQuad")
-        : tw("blur(2px) brightness(2.4)", "blur(0px) brightness(1)", 420, "outQuart")
+        : tw(
+            ctx.lowFx ? "brightness(2.4)" : "blur(2px) brightness(2.4)",
+            ctx.lowFx ? "brightness(1)" : "blur(0px) brightness(1)",
+            420,
+            "outQuart"
+          )
     },
     partStagger(ctx, fitStep(pieces.length, ctx.compact ? 50 : 24, 420), 40, "random")
   );

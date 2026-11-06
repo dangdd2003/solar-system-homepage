@@ -21,7 +21,7 @@ const solarWind: EffectBuilder = (el, ctx) => {
       {
         "--rv-o": tw(0, 1, 420, "outQuad"),
         "--rv-x": tw("-1rem", "0rem", 700, "outExpo"),
-        filter: tw("blur(4px)", "blur(0px)", 600, "outQuart")
+        ...(ctx.lowFx ? {} : { filter: tw("blur(4px)", "blur(0px)", 600, "outQuart") })
       },
       0
     );
@@ -34,7 +34,7 @@ const solarWind: EffectBuilder = (el, ctx) => {
     {
       opacity: tw(0, 1, 300, "outQuad"),
       x: tw("-0.6em", "0em", 600, "outExpo"),
-      filter: tw("blur(3px)", "blur(0px)", 500, "outQuart")
+      ...(ctx.lowFx ? {} : { filter: tw("blur(3px)", "blur(0px)", 500, "outQuart") })
     },
     partStagger(ctx, fitStep(words.length, 12, 360), 0, "first")
   );

@@ -32,8 +32,8 @@ const cometTrail: EffectBuilder = (el, ctx: EffectContext) => {
     ? {}
     : {
         filter: tw(
-          `brightness(2) ${glow(acc, 8, 0.9)}`,
-          `brightness(1) ${glow(acc, 0, 0)}`,
+          ctx.lowFx ? "brightness(2)" : `brightness(2) ${glow(acc, 8, 0.9)}`,
+          ctx.lowFx ? "brightness(1)" : `brightness(1) ${glow(acc, 0, 0)}`,
           900,
           "outQuad"
         )
@@ -55,7 +55,14 @@ const lightSpeed: EffectBuilder = (el, ctx: EffectContext) => {
   const g = geometry(el);
   const flare = ctx.compact
     ? { filter: tw("brightness(2)", "brightness(1)", 500, "outQuad") }
-    : { filter: tw("blur(4px) brightness(2.4)", "blur(0px) brightness(1)", 620, "outQuart") };
+    : {
+        filter: tw(
+          ctx.lowFx ? "brightness(2.4)" : "blur(4px) brightness(2.4)",
+          ctx.lowFx ? "brightness(1)" : "blur(0px) brightness(1)",
+          620,
+          "outQuart"
+        )
+      };
   const tl = timeline(ctx);
   if (g.stroke) {
     return tl.add(
