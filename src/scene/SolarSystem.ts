@@ -210,8 +210,11 @@ export class SolarSystem {
   // Reused per-body in the frame loop; each value is copied into mesh.position before the next body.
   private readonly scratchFlat = { x: 0, z: 0 };
   private readonly scratchPoint = { x: 0, y: 0, z: 0 };
-  // Reused raycast hit buffer; cleared before each pick and never returned.
-  private readonly scratchHits: THREE.Intersection[] = [];
+  // Reused pick buffers: a body's bounding sphere and its hit point on the ray. Never returned.
+  private readonly scratchPickSphere = new THREE.Sphere();
+  private readonly scratchPickPoint = new THREE.Vector3();
+  // Reused hit list for one pick, nearest first; cleared before each pick and never returned.
+  private readonly scratchHits: Array<{ mesh: THREE.Mesh; distance: number }> = [];
   // Eclipse handles: Earth is shadowed by the Moon (Solar Eclipse) and the Moon is shadowed by Earth (Lunar Eclipse).
   private readonly earthEclipse: EclipseShadowHandle;
   private readonly moonRadius: number;
@@ -222,7 +225,8 @@ export class SolarSystem {
   private readonly moon: THREE.Mesh;
   private readonly moonOrbitLine: THREE.LineLoop;
   private readonly earthClouds: THREE.Mesh;
-  private readonly pickableObjects: THREE.Object3D[];
+  // Pick proxies: each body is tested as its bounding sphere (see pickAt). `radius` is local.
+  private readonly pickTargets: Array<{ readonly mesh: THREE.Mesh; readonly radius: number }>;
   private readonly hoverGlow: HoverGlow;
   // Body under the pointer, so a pointer move over the same body does not wake an idle loop.
   private hoveredId: BodyId | null = null;
@@ -301,8 +305,12 @@ export class SolarSystem {
     }
     this.scene.add(this.sun.haloMesh);
 
-    // Cache pickable objects once so raycasting on hover doesn't allocate an array every frame
-    this.pickableObjects = [...this.meshes.values(), this.moon];
+    // Cache the pick proxies once so hover does not rebuild them every frame
+    this.pickTargets = [...this.meshes.values(), this.moon].map((mesh) => {
+      const geo = mesh.geometry;
+      if (!geo.boundingSphere) geo.computeBoundingSphere();
+      return { mesh, radius: geo.boundingSphere?.radius ?? 0 };
+    });
 
     // Every texture job this scene will run, and the bodies gated on them.
     const textureJobs = buildJobs(built);
@@ -841,16 +849,28 @@ export class SolarSystem {
     this.hoverGlow.update(this.rig.camera, delta, this.frameHeight());
   }
 
-  /** Raycast at a client-space point, returning the body under it (if any). */
+  /** Pick at a client-space point, returning the nearest body under it (if any). */
   private pickAt(clientX: number, clientY: number): BodyId | null {
     const rect = this.loop.getRect();
     this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.rig.camera);
+    const ray = this.raycaster.ray;
     this.scratchHits.length = 0;
-    const hits = this.raycaster.intersectObjects(this.pickableObjects, false, this.scratchHits);
-    for (const hit of hits) {
-      const id = hit.object.userData.bodyId;
+    // One sphere test per body (eleven in all) instead of a triangle test per face: a
+    // body's pick proxy is its bounding sphere, which the mesh's surface never leaves.
+    for (const target of this.pickTargets) {
+      const { mesh } = target;
+      mesh.getWorldPosition(this.scratchPickSphere.center);
+      scratchWorldScale.setFromMatrixScale(mesh.matrixWorld);
+      this.scratchPickSphere.radius =
+        target.radius * Math.max(scratchWorldScale.x, scratchWorldScale.y, scratchWorldScale.z);
+      const point = ray.intersectSphere(this.scratchPickSphere, this.scratchPickPoint);
+      if (point) this.scratchHits.push({ mesh, distance: ray.origin.distanceTo(point) });
+    }
+    this.scratchHits.sort((a, b) => a.distance - b.distance);
+    for (const hit of this.scratchHits) {
+      const id = hit.mesh.userData.bodyId;
       if (typeof id !== "string" || !isBodyId(id)) return null;
       // A body still growing in is not yet pickable; look through to the bodies behind it.
       if (this.entrance && !this.entrance.isDone(id)) continue;

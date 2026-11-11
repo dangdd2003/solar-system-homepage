@@ -57,8 +57,6 @@ const NON_BOX_TAGS = new Set([
   "SPAN",
   "LABEL"
 ]);
-/** Node.DOCUMENT_POSITION_FOLLOWING, spelled out so the module does not need a global Node. */
-const DOCUMENT_POSITION_FOLLOWING = 4;
 
 export interface FlipRunner {
   /** Records the idle layout of in-scope items. Items with a foreign animation keep their previous record. */
@@ -107,19 +105,29 @@ function isGroupChild(win: Window, el: Element): el is HTMLElement {
 
 /** Every in-scope, box-like flip item in document order. */
 function collectItems(win: Window, doc: Document): HTMLElement[] {
-  const found = new Set<HTMLElement>();
-  for (const group of Array.from(doc.querySelectorAll<HTMLElement>(GROUP_SELECTOR))) {
-    if (!isInScope(group)) continue;
-    for (const child of Array.from(group.children)) {
-      if (isGroupChild(win, child) && isBoxLike(child)) found.add(child);
+  // One selector list returns each candidate once, already in document order, so no dedupe or sort is needed.
+  // Each group's scope is tested once, not once per child.
+  const groupInScope = new Map<HTMLElement, boolean>();
+  const scopeOf = (group: HTMLElement): boolean => {
+    let inScope = groupInScope.get(group);
+    if (inScope === undefined) {
+      inScope = isInScope(group);
+      groupInScope.set(group, inScope);
     }
+    return inScope;
+  };
+  const items: HTMLElement[] = [];
+  for (const el of Array.from(
+    doc.querySelectorAll<HTMLElement>(`${GROUP_SELECTOR} > *, ${FLIP_SELECTOR}`)
+  )) {
+    if (!isBoxLike(el)) continue;
+    const parent = el.parentElement;
+    const fromGroup =
+      parent !== null && parent.matches(GROUP_SELECTOR) && scopeOf(parent) && isGroupChild(win, el);
+    const flip = el.matches(FLIP_SELECTOR) && isInScope(el);
+    if (fromGroup || flip) items.push(el);
   }
-  for (const el of Array.from(doc.querySelectorAll<HTMLElement>(FLIP_SELECTOR))) {
-    if (isInScope(el) && isBoxLike(el)) found.add(el);
-  }
-  return Array.from(found).sort((a, b) =>
-    a.compareDocumentPosition(b) & DOCUMENT_POSITION_FOLLOWING ? -1 : 1
-  );
+  return items;
 }
 
 /** Hidden (`display: none`) elements report an all-zero box; they have no layout to FLIP from or to. */

@@ -23,6 +23,8 @@ interface Driven {
 }
 
 const driven = new Set<Driven>();
+/** Per-frame snapshot of `driven`, reused so a frame does not allocate; a timeline added mid-frame waits for the next one. */
+const snapshot: Driven[] = [];
 let rafId = 0;
 let lastTime = 0;
 
@@ -36,7 +38,9 @@ function frame(now: number): void {
   lastTime = now;
   // Each timeline is isolated: one that throws must not end the shared loop,
   // or every other reveal would wait for its backstop and then snap.
-  for (const d of Array.from(driven)) {
+  snapshot.length = 0;
+  for (const d of driven) snapshot.push(d);
+  for (const d of snapshot) {
     try {
       // A reverted timeline is cancelled; seeking would revive it.
       if (d.tl.cancelled) {
@@ -61,6 +65,7 @@ function frame(now: number): void {
       }
     }
   }
+  snapshot.length = 0;
   rafId = driven.size > 0 ? requestAnimationFrame(frame) : 0;
 }
 

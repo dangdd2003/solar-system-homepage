@@ -120,8 +120,11 @@ export function initSolarSystemUI(startupPhase: StartupPhase): () => void {
   }
 
   function showPanel(key: string | null): void {
+    // Write only when a panel's state changes; a same-value write still mutates the class attribute.
     panels.forEach((el, panelKey) => {
-      el.classList.toggle("is-visible", panelKey === key);
+      const visible = panelKey === key;
+      if (el.classList.contains("is-visible") !== visible)
+        el.classList.toggle("is-visible", visible);
     });
     // Arrival attaches the section (theme + reading-mode dim), so the
     // zoom-in itself plays neutral and at full brightness.
@@ -129,7 +132,9 @@ export function initSolarSystemUI(startupPhase: StartupPhase): () => void {
   }
 
   function hideAllPanels(): void {
-    panels.forEach((el) => el.classList.remove("is-visible"));
+    panels.forEach((el) => {
+      if (el.classList.contains("is-visible")) el.classList.remove("is-visible");
+    });
   }
 
   /**
@@ -173,9 +178,9 @@ export function initSolarSystemUI(startupPhase: StartupPhase): () => void {
   }
 
   function hideFacts(isOverview = false): void {
-    if (factCard) factCard.hidden = true;
+    if (factCard && !factCard.hidden) factCard.hidden = true;
     if (isOverview) {
-      if (infoBtnWrapper) {
+      if (infoBtnWrapper && !infoBtnWrapper.classList.contains("collapsed")) {
         infoBtnWrapper.classList.add("collapsed");
       }
       isFactsVisible = !isMobileViewport();

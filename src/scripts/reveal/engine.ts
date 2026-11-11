@@ -106,6 +106,8 @@ function watchPanel(panel: HTMLElement, loadSeed: number, options: RevealOptions
   const panelKey = (panel.dataset.planetPanel || panel.id || "overview").toLowerCase();
   const items = Array.from(panel.querySelectorAll<HTMLElement>("[data-reveal]"));
   if (items.length === 0) return () => {};
+  // Each item's position in `items`, looked up per element instead of scanning the list (-1 when absent, as indexOf gave).
+  const itemRank = new Map<Element, number>(items.map((el, i) => [el, i]));
 
   const roller = createRoller(options.rng);
   const types = new Set<RevealType>();
@@ -201,7 +203,7 @@ function watchPanel(panel: HTMLElement, loadSeed: number, options: RevealOptions
 
       try {
         if (type) {
-          const itemId = el.id || `rv-${items.indexOf(el)}`;
+          const itemId = el.id || `rv-${itemRank.get(el) ?? -1}`;
           const plannedItem = currentPlan?.byId.get(itemId);
           const roll = rolls.get(type);
           const playedName = plannedItem?.played ?? roll?.effect ?? el.dataset.reveal ?? "fade";

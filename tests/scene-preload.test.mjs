@@ -112,7 +112,7 @@ test("preloads the actual emitted boot chunk in the head only on scene pages", a
   const html = await readFile(join(root, "index.html"), "utf8");
   assert.match(
     html,
-    /<head><link rel="modulepreload" href="\/_astro\/solar-system-boot.actual-hash.js" crossorigin>/
+    /<title>Home<\/title><link rel="modulepreload" href="\/_astro\/solar-system-boot.actual-hash.js" crossorigin><\/head>/
   );
   assert.equal(html.replace(/<link[^>]+>/, ""), scene);
   assert.equal(await readFile(join(root, "nested", "index.html"), "utf8"), html);

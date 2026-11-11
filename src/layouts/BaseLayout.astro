@@ -87,7 +87,7 @@ const personJsonLd = JSON.stringify({
     <meta name="theme-color" content="#000000" />
     <meta name="color-scheme" content="dark" />
 
-    <!-- Startup textures start downloading at HTML parse: the Sun first, then the inner planets the aperture reveals next.
+    <!-- The Sun texture starts downloading at HTML parse. The other planets' textures are fetched by the scene's own loader, so they are not preloaded here.
          as="fetch" + crossorigin matches the ImageBitmapLoader request (fetch, cors, same-origin credentials), so each file downloads once. -->
     <link
       rel="preload"
@@ -96,27 +96,6 @@ const personJsonLd = JSON.stringify({
       type="image/webp"
       crossorigin="anonymous"
       fetchpriority="high"
-    />
-    <link
-      rel="preload"
-      as="fetch"
-      href="/textures/planets/mercury.webp"
-      type="image/webp"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="preload"
-      as="fetch"
-      href="/textures/planets/venus.webp"
-      type="image/webp"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="preload"
-      as="fetch"
-      href="/textures/planets/earth.webp"
-      type="image/webp"
-      crossorigin="anonymous"
     />
 
     <script is:inline>
