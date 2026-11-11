@@ -708,6 +708,11 @@ const links = [
       opacity: 1 !important;
       visibility: visible !important;
     }
+  }
+
+  /* Compact menu only: on desktop `.nav__links > li` also matches the indicator, whose
+     transform positions it on the active link. */
+  @media (prefers-reduced-motion: reduce) and (max-width: 640px) {
     .nav__links {
       transition: visibility 0s linear 0.15s !important;
     }
