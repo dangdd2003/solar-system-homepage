@@ -419,7 +419,10 @@
     transform: translateY(20px);
     pointer-events: none;
     /* hide immediately without delay */
-    transition: all 0.3s ease 0s;
+    transition:
+      opacity 0.3s ease 0s,
+      visibility 0.3s ease 0s,
+      transform 0.3s ease 0s;
   }
 
   #fact-name {
@@ -875,7 +878,10 @@
     padding: 0.25rem 0.35rem;
     text-align: center;
     outline: none;
-    transition: all 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
     -moz-appearance: textfield;
   }
 

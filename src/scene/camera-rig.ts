@@ -164,6 +164,9 @@ export class CameraRig {
   private manualDirty = false;
   private lastManualEvent = 0;
   private settleEmitted = false;
+  // Set once a gesture has emitted `transition`, so each drag or wheel event does not emit it
+  // again. Cleared when `settled` is emitted (the gesture is over) and when a tween starts.
+  private transitionLatched = false;
   // Eased re-framing after a viewport resize or rotation. Every resize restarts
   // a short ease from wherever the camera is now (`from`), timed from the last
   // frame's elapsed time (`start`), so a continuous drag tracks the window
@@ -374,11 +377,15 @@ export class CameraRig {
     // Mark this frame's interaction: reset the settle latch and flag that a new
     // event landed (update() timestamps it). Emit `transition` so the content
     // panel temp-hides — for a FOCUSED (locked) body too, not just a free look.
+    // The first event of a gesture emits it; later events in the same gesture do not.
     // `this.focused` is deliberately left untouched so the lock and its
     // ride-along survive; only pan() detaches the anchor.
     this.manualDirty = true;
     this.settleEmitted = false;
-    this.onFocusChange({ kind: "transition" });
+    if (!this.transitionLatched) {
+      this.transitionLatched = true;
+      this.onFocusChange({ kind: "transition" });
+    }
     // The settle detector needs frames even when a reduced-motion gesture snaps.
     this.onActivity();
   }
@@ -585,6 +592,7 @@ export class CameraRig {
     this.fling = null;
     this.manualDirty = false;
     this.settleEmitted = false;
+    this.transitionLatched = false;
     this.onActivity();
     if (this.reducedMotion) {
       this.camera.position.set(toPos.x, toPos.y, toPos.z);
@@ -663,6 +671,8 @@ export class CameraRig {
     }
     if (!this.settleEmitted && elapsed - this.lastManualEvent >= SETTLE_IDLE_SECONDS) {
       this.settleEmitted = true;
+      // The gesture is over: its next event starts a new one and emits `transition` again.
+      this.transitionLatched = false;
       this.onFocusChange({ kind: "settled" });
     }
   }

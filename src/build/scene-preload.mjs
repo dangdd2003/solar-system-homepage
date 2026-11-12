@@ -72,7 +72,8 @@ export default function scenePreload() {
                   (tag.includes(`href="${escapedHref}"`) || tag.includes(`href='${escapedHref}'`))
               );
               if (alreadyPreloaded) continue;
-              const updated = html.replace(/<head\b[^>]*>/i, `$&${link}`);
+              // Before </head>, not after <head>: the stylesheet links Astro emits come first.
+              const updated = html.replace(/<\/head>/i, `${link}$&`);
               if (updated !== html) await writeFile(file, updated);
             }
           }

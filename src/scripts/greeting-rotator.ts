@@ -25,7 +25,7 @@ export interface GreetingRotatorOptions {
  * upward, About rolls like a cube). The box width animates to the new word so
  * the following text glides.
  *
- * Automatically pauses when document.hidden is true or the parent panel is hidden.
+ * Automatically pauses when document.hidden is true, the parent panel is hidden, or the hero is offscreen.
  * Stops while prefers-reduced-motion is on and resumes if the preference is turned off
  * after load. Returns a cleanup function.
  */
@@ -111,16 +111,40 @@ export function initGreetingRotator(
     interval = undefined;
   };
 
+  // The interval runs only while motion is allowed, the hero is on screen and the page is visible.
+  // Each of those can change after load, so every change re-syncs the one interval.
+  let reducedMotion = Boolean(reduceQuery?.matches);
+  let inView = true;
+  const sync = (): void => {
+    if (!reducedMotion && inView && !document.hidden) start();
+    else stop();
+  };
+
   // The preference can change after load, so the interval follows the media query.
   const onMotionChange = (e: MediaQueryListEvent): void => {
-    if (e.matches) stop();
-    else start();
+    reducedMotion = e.matches;
+    sync();
   };
-  if (!reduceQuery?.matches) start();
+  // Hero offscreen: no ticks are needed. Observed on the hero section, falling back to the box itself.
+  const hero = root.closest<HTMLElement>("#hero") ?? root;
+  const io =
+    typeof IntersectionObserver === "function"
+      ? new IntersectionObserver((entries) => {
+          const last = entries[entries.length - 1];
+          if (!last) return;
+          inView = last.isIntersecting;
+          sync();
+        })
+      : null;
+  io?.observe(hero);
+  document.addEventListener("visibilitychange", sync);
+  sync();
   reduceQuery?.addEventListener?.("change", onMotionChange);
 
   return () => {
     stop();
+    io?.disconnect();
+    document.removeEventListener("visibilitychange", sync);
     reduceQuery?.removeEventListener?.("change", onMotionChange);
     for (const [word, timer] of pendingRemovals) {
       clearTimeout(timer);

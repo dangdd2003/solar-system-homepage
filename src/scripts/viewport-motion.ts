@@ -48,6 +48,8 @@ export interface ViewportMotionEnv {
   cancelRaf: (id: number) => void;
   setTimer: (cb: () => void, ms: number) => number;
   clearTimer: (id: number) => void;
+  /** Current time in milliseconds, on the same clock as `setTimer` delays. */
+  now: () => number;
 }
 
 function defaultEnv(): ViewportMotionEnv {
@@ -57,7 +59,8 @@ function defaultEnv(): ViewportMotionEnv {
     raf: (cb) => requestAnimationFrame(() => cb()),
     cancelRaf: (id) => cancelAnimationFrame(id),
     setTimer: (cb, ms) => window.setTimeout(cb, ms),
-    clearTimer: (id) => window.clearTimeout(id)
+    clearTimer: (id) => window.clearTimeout(id),
+    now: () => Date.now()
   };
 }
 
@@ -252,26 +255,37 @@ export function createViewportMotion(env: ViewportMotionEnv): () => void {
       attributeFilter: [REVEAL_DONE_ATTR],
       subtree: true
     });
+    // `style` is left out: per-frame inline writes (pointer spotlight --mx/--my, flip transforms) would
+    // trigger a snapshot each time. Layout-relevant changes here are visibility (hidden/class) and children.
     for (const group of Array.from(doc.querySelectorAll<HTMLElement>(`[${GROUP_ATTR}]`))) {
       settled.observe(group, {
         childList: true,
         attributes: true,
-        attributeFilter: ["hidden", "class", "style"],
+        attributeFilter: ["hidden", "class"],
         subtree: true
       });
     }
     observers.push(settled);
   }
+  // One timer per burst of scrolling: each event only records its time, and the timer re-arms
+  // itself for the rest of the quiet period, so a scroll no longer clears and re-creates a timer.
+  let lastScrollAt = 0;
+  const onScrollSettled = (): void => {
+    const quiet = env.now() - lastScrollAt;
+    if (quiet < SCROLL_SETTLE_MS) {
+      scrollTimer = env.setTimer(onScrollSettled, SCROLL_SETTLE_MS - quiet);
+      return;
+    }
+    scrollTimer = null;
+    takeSnapshot();
+  };
   for (const panel of panels) {
     listen(
       panel,
       "scroll",
       () => {
-        clear(scrollTimer);
-        scrollTimer = env.setTimer(() => {
-          scrollTimer = null;
-          takeSnapshot();
-        }, SCROLL_SETTLE_MS);
+        lastScrollAt = env.now();
+        if (scrollTimer === null) scrollTimer = env.setTimer(onScrollSettled, SCROLL_SETTLE_MS);
       },
       { passive: true }
     );

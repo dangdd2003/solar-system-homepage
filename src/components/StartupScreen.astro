@@ -662,6 +662,11 @@
     will-change: transform, opacity, filter;
   }
 
+  /* Page reveal handoff (html.startup-ready, set by the controller): release the glyph layers */
+  :global(html.startup-ready) .startup-welcome :global(.startup-char) {
+    will-change: auto;
+  }
+
   /*
    * Low-effects tier (set by the controller): the full-viewport aperture drops its blur and
    * screen blend and its static background hint, the resting title and lines drop their

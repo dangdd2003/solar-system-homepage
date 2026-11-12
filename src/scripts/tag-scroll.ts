@@ -26,6 +26,11 @@ export function initTagScroll(root: HTMLElement): () => void {
     strip.scrollLeft += delta * unit;
   };
 
-  root.addEventListener("wheel", onWheel, { passive: false });
-  return () => root.removeEventListener("wheel", onWheel);
+  // Non-passive only on the strips this handler can scroll, so wheel events elsewhere in the section stay passive.
+  // Cards are rendered once and only re-ordered or hidden later (project-filter.ts), so these listeners stay valid.
+  const strips = Array.from(root.querySelectorAll<HTMLElement>(".card__tags"));
+  for (const strip of strips) strip.addEventListener("wheel", onWheel, { passive: false });
+  return () => {
+    for (const strip of strips) strip.removeEventListener("wheel", onWheel);
+  };
 }
