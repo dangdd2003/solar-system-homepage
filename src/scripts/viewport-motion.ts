@@ -86,8 +86,10 @@ export function createViewportMotion(env: ViewportMotionEnv): () => void {
   let snapshotDebounce: number | null = null;
   let scrollTimer: number | null = null;
 
+  const coarseMql = win.matchMedia?.("(pointer: coarse)");
+
   function coarsePointer(): boolean {
-    return win.matchMedia?.("(pointer: coarse)").matches ?? false;
+    return coarseMql?.matches ?? false;
   }
 
   function dispatch(name: string, orientationChanged: boolean): void {
@@ -222,7 +224,9 @@ export function createViewportMotion(env: ViewportMotionEnv): () => void {
   // Viewport changes.
   listen(win, "resize", () => onViewportChange(false));
   listen(win, "orientationchange", () => onViewportChange(true));
-  listen(win.visualViewport ?? win, "resize", () => onViewportChange(false));
+  if (win.visualViewport) {
+    listen(win.visualViewport, "resize", () => onViewportChange(false));
+  }
   const orientation = win.screen?.orientation;
   if (orientation) listen(orientation, "change", () => onViewportChange(true));
 

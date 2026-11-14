@@ -32,13 +32,28 @@ export function stepSpring(s: SpringState, goal: number, omega: number, dt: numb
  * with exponential friction of time constant `tau`. Total glide from a
  * velocity v is v * tau, independent of frame rate.
  */
-export function coast(
-  velocity: number,
-  tau: number,
-  dt: number
-): { distance: number; velocity: number } {
+export interface CoastStep {
+  distance: number;
+  velocity: number;
+}
+
+/**
+ * Allocation-free variant of `coast`: writes displacement and remaining velocity into `out`.
+ */
+export function coastInto(velocity: number, tau: number, dt: number, out: CoastStep): CoastStep {
   const decay = Math.exp(-dt / tau);
-  return { distance: velocity * tau * (1 - decay), velocity: velocity * decay };
+  out.distance = velocity * tau * (1 - decay);
+  out.velocity = velocity * decay;
+  return out;
+}
+
+/**
+ * Exact displacement and remaining velocity after coasting for `dt` seconds
+ * with exponential friction of time constant `tau`. Total glide from a
+ * velocity v is v * tau, independent of frame rate.
+ */
+export function coast(velocity: number, tau: number, dt: number): CoastStep {
+  return coastInto(velocity, tau, dt, { distance: 0, velocity: 0 });
 }
 
 /** One pointer movement: when it happened and how far it moved. */
@@ -48,6 +63,16 @@ interface VelocitySample {
   dy: number;
 }
 
+const INITIAL_TRACKER_CAPACITY = 32;
+
+function createSampleSlots(count: number): VelocitySample[] {
+  const arr = new Array<VelocitySample>(count);
+  for (let i = 0; i < count; i++) {
+    arr[i] = { t: 0, dx: 0, dy: 0 };
+  }
+  return arr;
+}
+
 /**
  * Tracks recent pointer movement so a release can turn into a fling. Keeps a
  * short window of samples; the release velocity is their total travel over the
@@ -55,7 +80,10 @@ interface VelocitySample {
  * stops dead instead of lurching off on stale speed.
  */
 export class VelocityTracker {
-  private samples: VelocitySample[] = [];
+  private capacity = INITIAL_TRACKER_CAPACITY;
+  private samples: VelocitySample[] = createSampleSlots(INITIAL_TRACKER_CAPACITY);
+  private head = 0;
+  private count = 0;
   private lastT = 0;
 
   /** Seconds of history that contribute to the release velocity. */
@@ -64,31 +92,50 @@ export class VelocityTracker {
   static readonly STALE = 0.06;
 
   reset(t: number): void {
-    this.samples = [];
+    this.head = 0;
+    this.count = 0;
     this.lastT = t;
   }
 
   add(t: number, dx: number, dy: number): void {
-    this.samples.push({ t, dx, dy });
     this.lastT = t;
     const cutoff = t - VelocityTracker.WINDOW;
-    let oldest = this.samples[0];
-    while (oldest !== undefined && oldest.t < cutoff) {
-      this.samples.shift();
-      oldest = this.samples[0];
+    while (this.count > 0 && this.samples[this.head]!.t < cutoff) {
+      this.head = (this.head + 1) % this.capacity;
+      this.count--;
     }
+    if (this.count === this.capacity) {
+      const nextCapacity = this.capacity * 2;
+      const next = new Array<VelocitySample>(nextCapacity);
+      for (let i = 0; i < this.count; i++) {
+        next[i] = this.samples[(this.head + i) % this.capacity]!;
+      }
+      for (let i = this.count; i < nextCapacity; i++) {
+        next[i] = { t: 0, dx: 0, dy: 0 };
+      }
+      this.samples = next;
+      this.capacity = nextCapacity;
+      this.head = 0;
+    }
+    const tail = (this.head + this.count) % this.capacity;
+    const slot = this.samples[tail]!;
+    slot.t = t;
+    slot.dx = dx;
+    slot.dy = dy;
+    this.count++;
   }
 
   /** Pixels per second at time `t` (the release). Zero if the drag had paused. */
   velocity(t: number): { vx: number; vy: number } {
-    if (this.samples.length === 0 || t - this.lastT > VelocityTracker.STALE) {
+    if (this.count === 0 || t - this.lastT > VelocityTracker.STALE) {
       return { vx: 0, vy: 0 };
     }
     const cutoff = t - VelocityTracker.WINDOW;
     let dx = 0;
     let dy = 0;
     let first = t;
-    for (const s of this.samples) {
+    for (let i = 0; i < this.count; i++) {
+      const s = this.samples[(this.head + i) % this.capacity]!;
       if (s.t < cutoff) continue;
       dx += s.dx;
       dy += s.dy;

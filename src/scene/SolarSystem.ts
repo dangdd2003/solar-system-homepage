@@ -1,8 +1,27 @@
-import * as THREE from "three";
-import { BODIES, type BodyId, getBody, isBodyId } from "./bodies";
-import { ellipsePositionInto } from "./ellipse";
+import {
+  AmbientLight,
+  Line,
+  LineLoop,
+  Material,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  Object3D,
+  PointLight,
+  Points,
+  Raycaster,
+  Scene,
+  ShaderMaterial,
+  Sphere,
+  SphereGeometry,
+  Texture,
+  Vector2,
+  Vector3
+} from "three";
+import { BODIES, type BodyConfig, type BodyId, getBody, isBodyId } from "./bodies";
+import { ellipsePositionPrecomputedInto } from "./ellipse";
 import { defaultOrbitRadii } from "./layout";
-import { cameraTargetFor, type Vec3 } from "./camera-path";
+import { type CameraTarget, cameraTargetForInto } from "./camera-path";
 import { orbitPointInto } from "./orbital-plane";
 import { detectQuality } from "./device";
 import {
@@ -73,7 +92,7 @@ const REVEAL_SAFETY_PX = 8;
 
 /** A body (or group of bodies) whose textures must be applied before the aperture covers it. */
 interface RevealGate {
-  readonly mesh: THREE.Object3D;
+  readonly mesh: Object3D;
   /** Bounding-sphere radius in world units, including child rings or clouds. */
   readonly worldRadius: number;
   readonly jobs: readonly TextureJobId[];
@@ -109,13 +128,13 @@ const SUN_LIGHT_INTENSITY = 5.0;
 const SUN_LIGHT_DECAY = 0.35;
 
 /** Disposes a material, its texture properties, and any shader texture uniforms. */
-function disposeMaterial(material: THREE.Material): void {
+function disposeMaterial(material: Material): void {
   for (const value of Object.values(material)) {
-    if (value instanceof THREE.Texture) value.dispose();
+    if (value instanceof Texture) value.dispose();
   }
-  if (material instanceof THREE.ShaderMaterial) {
+  if (material instanceof ShaderMaterial) {
     for (const uniform of Object.values(material.uniforms)) {
-      if (uniform.value instanceof THREE.Texture) uniform.value.dispose();
+      if (uniform.value instanceof Texture) uniform.value.dispose();
     }
   }
   material.dispose();
@@ -155,20 +174,20 @@ const ENTRANCE_DURATION_MS: Record<BodyId, number> = {
   moon: 650
 };
 
-const scratchWorldScale = new THREE.Vector3();
+const scratchWorldScale = new Vector3();
 
 /**
  * World-space bounding radius of a body: its own sphere, widened to cover any
  * child mesh (Saturn's ring, Earth's cloud shell). Computed once at construction.
  */
-function worldBoundingRadius(root: THREE.Mesh): number {
+function worldBoundingRadius(root: Mesh): number {
   root.updateWorldMatrix(true, false);
   // Not getWorldScale: since three 0.187 it reports a zero-scaled body as scale 1.
   scratchWorldScale.setFromMatrixScale(root.matrixWorld);
   const scale = Math.max(scratchWorldScale.x, scratchWorldScale.y, scratchWorldScale.z);
   let radius = 0;
   for (const obj of [root, ...root.children]) {
-    if (!(obj instanceof THREE.Mesh)) continue;
+    if (!(obj instanceof Mesh)) continue;
     const geo = obj.geometry;
     if (!geo.boundingSphere) geo.computeBoundingSphere();
     const local = (geo.boundingSphere?.radius ?? 0) + obj.position.length();
@@ -188,45 +207,65 @@ export function computeMoonPosition(
   moonAngle: number,
   out: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 }
 ): { x: number; y: number; z: number } {
-  const m = ellipsePositionInto(MOON_ORBIT_RADIUS, 0, moonAngle, moonFlatScratch);
+  const m = ellipsePositionPrecomputedInto(
+    MOON_ORBIT_RADIUS,
+    MOON_ORBIT_RADIUS,
+    0,
+    moonAngle,
+    moonFlatScratch
+  );
   out.x = m.x;
   out.y = m.z * MOON_SIN_INCL;
   out.z = m.z * MOON_COS_INCL;
   return out;
 }
 
+interface PlanetOrbitEntry {
+  readonly body: BodyConfig;
+  readonly mesh: Mesh;
+  readonly semiMajor: number;
+  readonly semiMinor: number;
+  readonly focusOffset: number;
+}
+
 export class SolarSystem {
-  private readonly scene = new THREE.Scene();
+  private readonly scene = new Scene();
   private readonly rig: CameraRig;
-  private readonly controls: CameraControls;
+  private readonly controls!: CameraControls;
   private readonly loop: RenderLoop;
-  private readonly raycaster = new THREE.Raycaster();
-  private readonly pointer = new THREE.Vector2();
+  private readonly raycaster = new Raycaster();
+  private readonly pointer = new Vector2();
   // Reused for reading a body's world position each frame
-  private readonly scratchWorldPos = new THREE.Vector3();
-  private readonly scratchEarthWorldPos = new THREE.Vector3();
+  private readonly scratchWorldPos = new Vector3();
+  private readonly scratchEarthWorldPos = new Vector3();
   // Reused per-frame Moon offset from Earth; only read within onFrame, never stored.
   private readonly scratchMoonOffset = { x: 0, y: 0, z: 0 };
   // Reused per-body in the frame loop; each value is copied into mesh.position before the next body.
   private readonly scratchFlat = { x: 0, z: 0 };
   private readonly scratchPoint = { x: 0, y: 0, z: 0 };
+  private readonly scratchDestination: CameraTarget = {
+    position: { x: 0, y: 0, z: 0 },
+    lookAt: { x: 0, y: 0, z: 0 }
+  };
   // Reused pick buffers: a body's bounding sphere and its hit point on the ray. Never returned.
-  private readonly scratchPickSphere = new THREE.Sphere();
-  private readonly scratchPickPoint = new THREE.Vector3();
+  private readonly scratchPickSphere = new Sphere();
+  private readonly scratchPickPoint = new Vector3();
   // Reused hit list for one pick, nearest first; cleared before each pick and never returned.
-  private readonly scratchHits: Array<{ mesh: THREE.Mesh; distance: number }> = [];
+  private readonly scratchHits: Array<{ mesh: Mesh; distance: number }> = [];
   // Eclipse handles: Earth is shadowed by the Moon (Solar Eclipse) and the Moon is shadowed by Earth (Lunar Eclipse).
   private readonly earthEclipse: EclipseShadowHandle;
   private readonly moonRadius: number;
-  private readonly meshes: Map<BodyId, THREE.Mesh>;
+  private readonly meshes: Map<BodyId, Mesh>;
+  private readonly earthMesh: Mesh | undefined;
+  private readonly planetOrbits: readonly PlanetOrbitEntry[];
   private readonly sun: AnimatedSun;
-  private readonly sunLight: THREE.PointLight;
+  private readonly sunLight: PointLight;
   private readonly built: BuiltBodies;
-  private readonly moon: THREE.Mesh;
-  private readonly moonOrbitLine: THREE.LineLoop;
-  private readonly earthClouds: THREE.Mesh;
+  private readonly moon: Mesh;
+  private readonly moonOrbitLine: LineLoop;
+  private readonly earthClouds: Mesh;
   // Pick proxies: each body is tested as its bounding sphere (see pickAt). `radius` is local.
-  private readonly pickTargets: Array<{ readonly mesh: THREE.Mesh; readonly radius: number }>;
+  private readonly pickTargets: Array<{ readonly mesh: Mesh; readonly radius: number }>;
   private readonly hoverGlow: HoverGlow;
   // Body under the pointer, so a pointer move over the same body does not wake an idle loop.
   private hoveredId: BodyId | null = null;
@@ -236,6 +275,7 @@ export class SolarSystem {
   private disposed = false;
   private lastElapsed = 0;
   private activeOrbitTime = 0;
+  private lastOrbitTime = NaN;
   // Orbit clock rate. Reduced motion starts at 0 (paused); play()/setSpeed() opt in.
   private timeScale: number;
   // Orbit radii auto-computed from real distances (layout.ts): outermost orbit
@@ -244,8 +284,8 @@ export class SolarSystem {
   // Texture jobs not yet applied, and the bodies that must wait for them (see revealLimitPx).
   private readonly pendingTextureJobs: Set<TextureJobId>;
   private readonly revealGates: RevealGate[];
-  private readonly scratchRevealPos = new THREE.Vector3();
-  private readonly scratchRevealNdc = new THREE.Vector3();
+  private readonly scratchRevealPos = new Vector3();
+  private readonly scratchRevealNdc = new Vector3();
   // Return-visit entrance (null on the first visit) and the texture jobs each body still waits on.
   private readonly entrance: EntranceAnimator<BodyId> | null;
   private readonly entranceWaits = new Map<BodyId, Set<TextureJobId>>();
@@ -265,15 +305,15 @@ export class SolarSystem {
     this.rig = new CameraRig({
       reducedMotion: opts.reducedMotion,
       onFocusChange: opts.onFocusChange,
-      resolveDestination: (id) => this.destinationFor(id),
+      resolveDestination: (id, out) => this.destinationFor(id, out),
       // The rig runs only after the loop exists (its first call is the loop's resize).
       onActivity: () => this.loop.wake()
     });
 
     // Lights: one Sun point light + low ambient. Falloff is compressed rather
     // than physical inverse-square (see the lighting constants above).
-    this.sunLight = new THREE.PointLight(0xffffff, SUN_LIGHT_INTENSITY, 0, SUN_LIGHT_DECAY);
-    this.scene.add(new THREE.AmbientLight(0xffffff, AMBIENT_INTENSITY));
+    this.sunLight = new PointLight(0xffffff, SUN_LIGHT_INTENSITY, 0, SUN_LIGHT_DECAY);
+    this.scene.add(new AmbientLight(0xffffff, AMBIENT_INTENSITY));
     this.scene.add(this.sunLight);
 
     // Build the scene graph. Galactic skybox wraps everything as a background.
@@ -286,12 +326,29 @@ export class SolarSystem {
     const built = buildBodies(profile, { revealSweep: opts.revealSweep ?? true });
     this.built = built;
     this.meshes = built.meshes;
+    this.earthMesh = this.meshes.get("earth");
+    const planetOrbits: PlanetOrbitEntry[] = [];
+    for (const body of BODIES) {
+      const semiMajor = this.orbitRadiusOf(body.id);
+      if (semiMajor === 0) continue;
+      const mesh = this.meshes.get(body.id);
+      if (!mesh) continue;
+      const e = body.facts.eccentricity;
+      planetOrbits.push({
+        body,
+        mesh,
+        semiMajor,
+        semiMinor: semiMajor * Math.sqrt(1 - e * e),
+        focusOffset: semiMajor * e
+      });
+    }
+    this.planetOrbits = planetOrbits;
     this.sun = built.sun;
     this.moon = built.moon;
     this.moonOrbitLine = built.moonOrbitLine;
     this.earthClouds = built.earthClouds;
     this.earthEclipse = built.earthMaterial.eclipse;
-    if (!(built.moon.geometry instanceof THREE.SphereGeometry)) {
+    if (!(built.moon.geometry instanceof SphereGeometry)) {
       throw new Error("SolarSystem: the Moon mesh must use a SphereGeometry");
     }
     this.moonRadius = built.moon.geometry.parameters.radius;
@@ -397,8 +454,7 @@ export class SolarSystem {
       this.loop.start();
     } catch (error) {
       // A constructor throw never reaches dispose(), so release what was built so far.
-      this.textureAbort.abort();
-      this.loop.dispose();
+      this.disposeResources();
       throw error;
     }
   }
@@ -465,7 +521,14 @@ export class SolarSystem {
 
     let limit = Infinity;
     for (const gate of this.revealGates) {
-      if (!gate.jobs.some((id) => this.pendingTextureJobs.has(id))) continue;
+      let hasPending = false;
+      for (let i = 0; i < gate.jobs.length; i++) {
+        if (this.pendingTextureJobs.has(gate.jobs[i]!)) {
+          hasPending = true;
+          break;
+        }
+      }
+      if (!hasPending) continue;
       const centre = gate.mesh.getWorldPosition(this.scratchRevealPos);
       const dist = centre.distanceTo(camera.position);
       const r = gate.worldRadius;
@@ -506,7 +569,7 @@ export class SolarSystem {
   /** One gate per visible body that owns texture jobs: the Sun, each planet, and the Moon. */
   private buildRevealGates(): RevealGate[] {
     const gates: RevealGate[] = [];
-    const add = (mesh: THREE.Mesh, jobs: TextureJobId[]): void => {
+    const add = (mesh: Mesh, jobs: TextureJobId[]): void => {
       const live = jobs.filter((id) => this.pendingTextureJobs.has(id));
       if (live.length === 0) return;
       gates.push({ mesh, worldRadius: worldBoundingRadius(mesh), jobs: live });
@@ -532,7 +595,7 @@ export class SolarSystem {
         console.warn(`SolarSystem: "${id}" was revealed before its textures settled`);
       }
     });
-    const roots = new Map<BodyId, THREE.Object3D>();
+    const roots = new Map<BodyId, Object3D>();
     for (const [id, mesh] of this.meshes) roots.set(id, id === "sun" ? this.sun.group : mesh);
     roots.set("moon", this.moon);
 
@@ -613,7 +676,7 @@ export class SolarSystem {
     const clouds = this.earthClouds;
     clouds.visible = true;
     return this.loop.renderer.compileAsync(this.scene, this.rig.camera).finally(() => {
-      clouds.visible = (clouds.material as THREE.MeshStandardMaterial).opacity > 0;
+      clouds.visible = (clouds.material as MeshStandardMaterial).opacity > 0;
     });
   }
 
@@ -649,7 +712,7 @@ export class SolarSystem {
       case "earth_clouds": {
         const clouds = this.earthClouds;
         const mat = clouds.material;
-        if (!(mat instanceof THREE.MeshStandardMaterial)) return;
+        if (!(mat instanceof MeshStandardMaterial)) return;
         this.startReveal(id, dissolve, {
           to: CLOUD_OPACITY,
           durationMs: REVEAL_MS.clouds,
@@ -675,7 +738,7 @@ export class SolarSystem {
           });
         }
         const mat = ring?.material;
-        if (mat instanceof THREE.MeshBasicMaterial) {
+        if (mat instanceof MeshBasicMaterial) {
           this.startReveal(
             `${id}:opacity`,
             dissolve,
@@ -720,7 +783,7 @@ export class SolarSystem {
   }
 
   /** The Moon lives outside `meshes` (it is not a Sun-orbiting body). */
-  private meshOf(id: BodyId): THREE.Mesh | undefined {
+  private meshOf(id: BodyId): Mesh | undefined {
     return id === "moon" ? this.moon : this.meshes.get(id);
   }
 
@@ -729,16 +792,14 @@ export class SolarSystem {
   }
 
   /** Live camera destination for a body at its current orbital position. */
-  private destinationFor(id: BodyId): { position: Vec3; lookAt: Vec3 } | null {
+  private destinationFor(id: BodyId, out?: CameraTarget): CameraTarget | null {
     // The Moon is a scene-level object (not parented to Earth), so its `.position`
     // is already world space. Planets are parented to the scene too, but read
     // their world position so the camera frames them wherever they are.
     const mesh = this.meshOf(id);
     if (!mesh) return null;
     const worldPos = id === "moon" ? mesh.position : mesh.getWorldPosition(this.scratchWorldPos);
-    // cameraTargetFor only reads the coordinates and returns fresh objects, so
-    // passing the scratch vector directly never leaks a reference to it.
-    return cameraTargetFor(getBody(id), worldPos);
+    return cameraTargetForInto(getBody(id), worldPos, out ?? this.scratchDestination);
   }
 
   /**
@@ -779,61 +840,64 @@ export class SolarSystem {
 
     this.activeOrbitTime += delta * this.timeScale;
     const orbitTime = this.activeOrbitTime;
+    const orbitChanged = orbitTime !== this.lastOrbitTime;
 
-    for (const body of BODIES) {
-      const orbitRadius = this.orbitRadiusOf(body.id);
-      if (orbitRadius === 0) continue;
-      const mesh = this.meshes.get(body.id);
-      if (!mesh) continue;
-      // Elliptical orbit with the Sun at the focus (Kepler's first law),
-      // computed flat in the ecliptic then tipped into the body's real
-      // (inclined) orbital plane — the planets are NOT coplanar.
-      const flat = ellipsePositionInto(
-        orbitRadius,
-        body.facts.eccentricity,
-        body.orbitSpeed * orbitTime,
-        this.scratchFlat
-      );
-      const p = orbitPointInto(body, flat, this.scratchPoint);
-      mesh.position.set(p.x, p.y, p.z);
-      // Axial spin scaled by actual relative day lengths
-      mesh.rotation.y = AXIAL_SPIN * body.facts.spinSpeed * orbitTime;
+    if (orbitChanged) {
+      this.lastOrbitTime = orbitTime;
+      for (const entry of this.planetOrbits) {
+        // Elliptical orbit with the Sun at the focus (Kepler's first law),
+        // computed flat in the ecliptic then tipped into the body's real
+        // (inclined) orbital plane — the planets are NOT coplanar.
+        const flat = ellipsePositionPrecomputedInto(
+          entry.semiMajor,
+          entry.semiMinor,
+          entry.focusOffset,
+          entry.body.orbitSpeed * orbitTime,
+          this.scratchFlat
+        );
+        const p = orbitPointInto(entry.body, flat, this.scratchPoint);
+        entry.mesh.position.set(p.x, p.y, p.z);
+        // Axial spin scaled by actual relative day lengths
+        entry.mesh.rotation.y = AXIAL_SPIN * entry.body.facts.spinSpeed * orbitTime;
+      }
     }
     // Return-visit grow-in. Scale is written only here; positions above are untouched.
     // The loop's clock is in seconds; the animator works in milliseconds.
+    const wasEntranceAnimating = this.entrance?.isAnimating() ?? false;
     this.entrance?.update(elapsed * 1000);
     // Texture reveals advance on the same scene clock (zero work when none are running).
     this.reveals.update(elapsed * 1000);
 
-    // The Moon orbits Earth independently in world space to avoid Earth's axial spin.
-    // A quarter-turn start phase keeps it out of Earth's shadow at rest.
-    const moonAngle = MOON_START_PHASE + MOON_ORBIT_SPEED * orbitTime;
-    const m = computeMoonPosition(moonAngle, this.scratchMoonOffset);
+    if (orbitChanged) {
+      // The Moon orbits Earth independently in world space to avoid Earth's axial spin.
+      // A quarter-turn start phase keeps it out of Earth's shadow at rest.
+      const moonAngle = MOON_START_PHASE + MOON_ORBIT_SPEED * orbitTime;
+      const m = computeMoonPosition(moonAngle, this.scratchMoonOffset);
 
-    const earthMesh = this.meshes.get("earth");
-    if (earthMesh) {
-      earthMesh.getWorldPosition(this.scratchEarthWorldPos);
-      this.moon.position.set(
-        this.scratchEarthWorldPos.x + m.x,
-        this.scratchEarthWorldPos.y + m.y,
-        this.scratchEarthWorldPos.z + m.z
-      );
-      this.moonOrbitLine.position.copy(this.scratchEarthWorldPos);
+      if (this.earthMesh) {
+        this.earthMesh.getWorldPosition(this.scratchEarthWorldPos);
+        this.moon.position.set(
+          this.scratchEarthWorldPos.x + m.x,
+          this.scratchEarthWorldPos.y + m.y,
+          this.scratchEarthWorldPos.z + m.z
+        );
+        this.moonOrbitLine.position.copy(this.scratchEarthWorldPos);
+      }
+      // Add Math.PI so the 'front' of the Moon texture faces the Earth (tidal locking).
+      this.moon.rotation.y = Math.atan2(m.x, m.z) + Math.PI;
+
+      // Earth's cloud layer drifts a touch faster than the surface turns.
+      this.earthClouds.rotation.y = CLOUD_SPIN * orbitTime;
+
+      // The Sun burns: churning plasma on the photosphere surface. Frozen to a
+      // static star while paused (orbitTime holds still). A slow axial spin
+      // drags the surface detail across the disc on top of the shader's own churn.
+      this.sun.update(orbitTime);
+      this.sun.group.rotation.y = AXIAL_SPIN * 0.5 * orbitTime;
     }
-    // Add Math.PI so the 'front' of the Moon texture faces the Earth (tidal locking).
-    this.moon.rotation.y = Math.atan2(m.x, m.z) + Math.PI;
-
-    // Earth's cloud layer drifts a touch faster than the surface turns.
-    this.earthClouds.rotation.y = CLOUD_SPIN * orbitTime;
-
-    // The Sun burns: churning plasma on the photosphere surface. Frozen to a
-    // static star while paused (orbitTime holds still). A slow axial spin
-    // drags the surface detail across the disc on top of the shader's own churn.
-    this.sun.update(orbitTime);
-    this.sun.group.rotation.y = AXIAL_SPIN * 0.5 * orbitTime;
 
     // Eclipse: Moon casts shadow on Earth (Solar Eclipse)
-    if (earthMesh) {
+    if (this.earthMesh && (orbitChanged || wasEntranceAnimating)) {
       // The Moon is scene-level, so its position is already world space.
       // The Moon's shadow shrinks with the Moon while it grows in.
       const moonScale = this.entrance?.scaleOf("moon") ?? 1;
@@ -843,10 +907,11 @@ export class SolarSystem {
     // Advance the camera AFTER bodies are placed so ride-along / tween re-aim
     // use fresh positions.
     this.rig.update(elapsed);
+    const frameH = this.frameHeight();
     // The Sun's halo sizes itself for the camera's distance, so it follows the rig.
-    this.sun.updateHalo(this.rig.camera, this.frameHeight());
+    this.sun.updateHalo(this.rig.camera, frameH);
     // The glow tracks its body and sizes itself for the camera, so it goes last.
-    this.hoverGlow.update(this.rig.camera, delta, this.frameHeight());
+    this.hoverGlow.update(this.rig.camera, delta, frameH);
   }
 
   /** Pick at a client-space point, returning the nearest body under it (if any). */
@@ -868,7 +933,9 @@ export class SolarSystem {
       const point = ray.intersectSphere(this.scratchPickSphere, this.scratchPickPoint);
       if (point) this.scratchHits.push({ mesh, distance: ray.origin.distanceTo(point) });
     }
-    this.scratchHits.sort((a, b) => a.distance - b.distance);
+    if (this.scratchHits.length > 1) {
+      this.scratchHits.sort((a, b) => a.distance - b.distance);
+    }
     for (const hit of this.scratchHits) {
       const id = hit.mesh.userData.bodyId;
       if (typeof id !== "string" || !isBodyId(id)) return null;
@@ -883,15 +950,19 @@ export class SolarSystem {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.disposeResources();
+  }
+
+  private disposeResources(): void {
     this.textureAbort.abort();
     this.entrance?.dispose();
     this.reveals.clear();
-    this.controls.dispose();
+    this.controls?.dispose();
     // Free textures/geometry BEFORE the renderer: renderer.dispose() resets its
     // per-texture GPU bookkeeping, after which texture.dispose() can no longer
     // reach gl.deleteTexture.
     this.scene.traverse((obj) => {
-      if (obj instanceof THREE.Mesh || obj instanceof THREE.Line || obj instanceof THREE.Points) {
+      if (obj instanceof Mesh || obj instanceof Line || obj instanceof Points) {
         obj.geometry.dispose();
         const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
         for (const material of materials) disposeMaterial(material);

@@ -18,10 +18,15 @@
 // Fixed elements at the screen edges make iOS Safari paint solid bars; keep the probe clear.
 const PROBE_INSET_PX = 12;
 
+let cachedBleed: number | undefined;
+
 /** Stage bleed below the visible viewport, in CSS px (0 outside iOS Safari tabs). */
 export function stageBleedPx(): number {
-  const value = getComputedStyle(document.documentElement).getPropertyValue("--bleed-bottom");
-  return parseFloat(value) || 0;
+  if (cachedBleed === undefined) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue("--bleed-bottom");
+    cachedBleed = parseFloat(value) || 0;
+  }
+  return cachedBleed;
 }
 
 export function initViewportChrome(): void {
@@ -50,7 +55,7 @@ export function initViewportChrome(): void {
     });
   };
 
-  measure();
+  update();
   window.addEventListener("resize", update, { passive: true });
   window.visualViewport?.addEventListener("resize", update, { passive: true });
   window.addEventListener("pageshow", update);

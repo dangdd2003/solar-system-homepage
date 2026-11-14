@@ -104,8 +104,7 @@ function isGroupChild(win: Window, el: Element): el is HTMLElement {
 }
 
 /** Every in-scope, box-like flip item in document order. */
-function collectItems(win: Window, doc: Document): HTMLElement[] {
-  // One selector list returns each candidate once, already in document order, so no dedupe or sort is needed.
+function collectItems(win: Window, candidates: readonly HTMLElement[]): HTMLElement[] {
   // Each group's scope is tested once, not once per child.
   const groupInScope = new Map<HTMLElement, boolean>();
   const scopeOf = (group: HTMLElement): boolean => {
@@ -117,15 +116,22 @@ function collectItems(win: Window, doc: Document): HTMLElement[] {
     return inScope;
   };
   const items: HTMLElement[] = [];
-  for (const el of Array.from(
-    doc.querySelectorAll<HTMLElement>(`${GROUP_SELECTOR} > *, ${FLIP_SELECTOR}`)
-  )) {
+  for (let i = 0; i < candidates.length; i++) {
+    const el = candidates[i]!;
     if (!isBoxLike(el)) continue;
+    if (el.matches(FLIP_SELECTOR) && isInScope(el)) {
+      items.push(el);
+      continue;
+    }
     const parent = el.parentElement;
-    const fromGroup =
-      parent !== null && parent.matches(GROUP_SELECTOR) && scopeOf(parent) && isGroupChild(win, el);
-    const flip = el.matches(FLIP_SELECTOR) && isInScope(el);
-    if (fromGroup || flip) items.push(el);
+    if (
+      parent !== null &&
+      parent.matches(GROUP_SELECTOR) &&
+      scopeOf(parent) &&
+      isGroupChild(win, el)
+    ) {
+      items.push(el);
+    }
   }
   return items;
 }
@@ -186,15 +192,45 @@ function parentIndices(jumps: Jump[]): number[] {
   });
 }
 
+const CANDIDATE_SELECTOR = `${GROUP_SELECTOR} > *, ${FLIP_SELECTOR}`;
+
 /** Creates the FLIP runner for one document. */
 export function createFlipRunner(win: Window, doc: Document): FlipRunner {
   const layouts = new WeakMap<HTMLElement, Box>();
   /** Every glide this runner started and has not yet finished or cancelled. */
   const active = new Set<Animation>();
+  let cachedCandidates: HTMLElement[] | null = null;
+  let observer: MutationObserver | null = null;
+
+  const ensureObserver = (): void => {
+    if (observer || typeof MutationObserver !== "function" || !doc.documentElement) return;
+    observer = new MutationObserver(() => {
+      cachedCandidates = null;
+    });
+    observer.observe(doc.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", FLIP_ATTRIBUTE, GROUP_ATTRIBUTE, "hidden", "aria-hidden"]
+    });
+  };
+
+  const getItems = (): HTMLElement[] => {
+    if (observer && observer.takeRecords().length > 0) {
+      cachedCandidates = null;
+    }
+    if (!cachedCandidates) {
+      ensureObserver();
+      const list = Array.from(doc.querySelectorAll<HTMLElement>(CANDIDATE_SELECTOR));
+      if (observer) cachedCandidates = list;
+      return collectItems(win, list);
+    }
+    return collectItems(win, cachedCandidates);
+  };
 
   return {
     snapshot(): void {
-      for (const el of collectItems(win, doc)) {
+      for (const el of getItems()) {
         if (hasForeignAnimation(el)) continue;
         const layout = layoutOf(el);
         if (isEmpty(layout)) {
@@ -213,7 +249,7 @@ export function createFlipRunner(win: Window, doc: Document): FlipRunner {
       const measured: Array<[HTMLElement, Box]> = [];
 
       // Read phase: layouts only. Rects are read just for items that jumped and may have a glide.
-      for (const el of collectItems(win, doc)) {
+      for (const el of getItems()) {
         if (measured.length >= MAX_FLIP_ELEMENTS) break;
         const layout = layoutOf(el);
         const prev = layouts.get(el);
@@ -222,9 +258,20 @@ export function createFlipRunner(win: Window, doc: Document): FlipRunner {
           layouts.delete(el);
           continue;
         }
-        if (!prev || !isJump(prev, layout) || hasForeignAnimation(el)) continue;
-        if (isOffscreen(layout, vw, vh)) continue;
-        const own = flipAnimationsOf(el);
+        if (!prev || !isJump(prev, layout) || isOffscreen(layout, vw, vh)) continue;
+        const anims = animationsOf(el);
+        let foreign = false;
+        const own: Animation[] = [];
+        for (let i = 0; i < anims.length; i++) {
+          const a = anims[i]!;
+          if (a.id === FLIP_ANIMATION_ID) {
+            own.push(a);
+          } else if (!("transitionProperty" in a)) {
+            foreign = true;
+            break;
+          }
+        }
+        if (foreign) continue;
         jumps.push({
           el,
           own,
@@ -287,6 +334,9 @@ export function createFlipRunner(win: Window, doc: Document): FlipRunner {
     },
 
     cancelAll(): void {
+      observer?.disconnect();
+      observer = null;
+      cachedCandidates = null;
       for (const anim of Array.from(active)) anim.cancel();
       active.clear();
       for (const el of Array.from(doc.querySelectorAll<HTMLElement>(FLIP_SELECTOR))) {

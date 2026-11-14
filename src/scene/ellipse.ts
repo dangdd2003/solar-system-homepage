@@ -13,6 +13,23 @@
  */
 
 /**
+ * Allocation-free variant of `ellipsePosition` using precomputed `semiMinor`
+ * (`a * sqrt(1 - e^2)`) and `focusOffset` (`a * e`), avoiding per-frame `sqrt`.
+ */
+export function ellipsePositionPrecomputedInto(
+  semiMajor: number,
+  semiMinor: number,
+  focusOffset: number,
+  angle: number,
+  out: { x: number; z: number }
+): { x: number; z: number } {
+  // Centre shifted by -c so the focus (Sun) sits at the origin.
+  out.x = Math.cos(angle) * semiMajor - focusOffset;
+  out.z = Math.sin(angle) * semiMinor;
+  return out;
+}
+
+/**
  * Allocation-free variant of `ellipsePosition`: writes the point into `out` and
  * returns it. Same arithmetic, same order, so results are bit-identical.
  */
@@ -24,12 +41,7 @@ export function ellipsePositionInto(
 ): { x: number; z: number } {
   const a = semiMajor;
   const e = eccentricity;
-  const b = a * Math.sqrt(1 - e * e);
-  const c = a * e;
-  // Centre shifted by -c so the focus (Sun) sits at the origin.
-  out.x = Math.cos(angle) * a - c;
-  out.z = Math.sin(angle) * b;
-  return out;
+  return ellipsePositionPrecomputedInto(a, a * Math.sqrt(1 - e * e), a * e, angle, out);
 }
 
 export function ellipsePosition(

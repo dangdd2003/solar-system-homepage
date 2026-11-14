@@ -1,4 +1,14 @@
-import * as THREE from "three";
+import {
+  BackSide,
+  Color,
+  MathUtils,
+  Mesh,
+  Object3D,
+  PerspectiveCamera,
+  ShaderMaterial,
+  SphereGeometry,
+  Vector3
+} from "three";
 
 /**
  * The soft glow that hugs the body under the pointer in orbit mode.
@@ -12,16 +22,16 @@ import * as THREE from "three";
  */
 export interface HoverGlow {
   /** Add THIS to the scene. Hidden while nothing is hovered. */
-  readonly mesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
+  readonly mesh: Mesh<SphereGeometry, ShaderMaterial>;
   /**
    * Glow around `target`, in `color`'s hue, fading in. `radius` is the body's own sphere radius
    * (unscaled); the glow follows the target's world scale, so it shrinks with a body still growing in.
    */
-  show: (target: THREE.Object3D, radius: number, color: number) => void;
+  show: (target: Object3D, radius: number, color: number) => void;
   /** Fade the glow out. */
   hide: () => void;
   /** Per-frame: follow the target and its scale, keep the glow's screen width, advance the fade. */
-  update: (camera: THREE.PerspectiveCamera, deltaSec: number, viewportHeight: number) => void;
+  update: (camera: PerspectiveCamera, deltaSec: number, viewportHeight: number) => void;
   /** Follow a live change to the reduced-motion setting. */
   setReducedMotion: (reduced: boolean) => void;
   /** True while a fade in or out is still running, so update() must keep being called. */
@@ -77,7 +87,7 @@ void main() {
 `;
 
 /** World radius of a body's own sphere, ignoring children such as Saturn's rings. */
-export function bodyRadiusOf(body: THREE.Mesh): number {
+export function bodyRadiusOf(body: Mesh): number {
   const geo = body.geometry;
   if (!geo.boundingSphere) geo.computeBoundingSphere();
   return geo.boundingSphere?.radius ?? 0;
@@ -85,27 +95,27 @@ export function bodyRadiusOf(body: THREE.Mesh): number {
 
 export function createHoverGlow(opts: HoverGlowOptions): HoverGlow {
   const uniforms = {
-    uColor: { value: new THREE.Color() },
+    uColor: { value: new Color() },
     uOpacity: { value: 0 },
     uRadius: { value: 1 },
     uWidth: { value: 1 }
   };
-  const material = new THREE.ShaderMaterial({
+  const material = new ShaderMaterial({
     uniforms,
     vertexShader: GLOW_VERT,
     fragmentShader: GLOW_FRAG,
-    side: THREE.BackSide,
+    side: BackSide,
     transparent: true,
     depthWrite: false
   });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), material);
+  const mesh = new Mesh(new SphereGeometry(1, 48, 32), material);
   mesh.visible = false;
   // Decoration only: never intercept picking.
   mesh.raycast = () => {};
 
-  const cameraPos = new THREE.Vector3();
-  const targetScale = new THREE.Vector3();
-  let target: THREE.Object3D | null = null;
+  const cameraPos = new Vector3();
+  const targetScale = new Vector3();
+  let target: Object3D | null = null;
   let radius = 0;
   let shown = false;
   let fade = 0;
@@ -152,8 +162,7 @@ export function createHoverGlow(opts: HoverGlowOptions): HoverGlow {
       // Convert the pixel width to world units at the body's distance.
       const distance = camera.getWorldPosition(cameraPos).distanceTo(mesh.position);
       const worldPerPx =
-        (2 * distance * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) /
-        Math.max(1, viewportHeight);
+        (2 * distance * Math.tan(MathUtils.degToRad(camera.fov) / 2)) / Math.max(1, viewportHeight);
       const width = GLOW_WIDTH_PX * worldPerPx;
       uniforms.uRadius.value = worldRadius;
       uniforms.uWidth.value = width;

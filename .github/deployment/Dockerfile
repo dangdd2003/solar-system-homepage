@@ -9,6 +9,7 @@
 # platform: no emulation, and one shared cache entry for every target platform.
 FROM --platform=$BUILDPLATFORM node:26-alpine AS build
 WORKDIR /app
+RUN apk add --no-cache brotli
 
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
@@ -17,10 +18,10 @@ COPY . .
 RUN npm run build
 
 # Pre-compress text assets so the server never compresses at runtime.
-RUN apk add --no-cache brotli \
- && find dist -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.mjs' \
+RUN find dist -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.mjs' \
       -o -name '*.json' -o -name '*.svg' -o -name '*.xml' -o -name '*.txt' -o -name '*.webmanifest' \) \
-      -size +1k -exec gzip -9 -k -n {} \; -exec brotli -q 11 -k {} \;
+      -size +1k -print0 \
+    | xargs -0 -r -n 1 -P "$(nproc)" sh -c 'gzip -9 -k -n "$1" && brotli -q 11 -k "$1"' _
 
 # ---- server binary ----
 FROM ghcr.io/static-web-server/static-web-server:2.44.1 AS server

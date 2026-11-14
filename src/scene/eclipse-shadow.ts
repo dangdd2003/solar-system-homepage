@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import { MeshStandardMaterial, Vector3 } from "three";
 import { SHADOW_MIN } from "./eclipse";
 
 /**
@@ -21,7 +21,7 @@ import { SHADOW_MIN } from "./eclipse";
  */
 export interface EclipseShadowHandle {
   /** Point the shadow at its caster this frame. `enabled=false` -> no shadow. */
-  updateEclipse: (casterWorldPos: THREE.Vector3, casterRadius: number, enabled: boolean) => void;
+  updateEclipse: (casterWorldPos: Vector3, casterRadius: number, enabled: boolean) => void;
 }
 
 /** GLSL port of the coverage term in eclipse.ts, plus the terminator gate and
@@ -95,12 +95,12 @@ export function patchShaderChunk(source: string, anchor: string, replacement: st
  * frame; mutating the held uniform objects reaches the GPU with no recompile.
  */
 export function injectEclipseShadow(
-  material: THREE.MeshStandardMaterial,
+  material: MeshStandardMaterial,
   opts: EclipseShadowOptions
 ): EclipseShadowHandle {
-  const uSunPos = { value: new THREE.Vector3(0, 0, 0) };
+  const uSunPos = { value: new Vector3(0, 0, 0) };
   const uSunRadius = { value: opts.sunRadius };
-  const uCasterPos = { value: new THREE.Vector3() };
+  const uCasterPos = { value: new Vector3() };
   const uCasterRadius = { value: 0 };
   const uEnabled = { value: 0 };
   // Deepest dim during a total eclipse. Defaults to SHADOW_MIN (Earth), but the

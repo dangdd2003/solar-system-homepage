@@ -249,16 +249,18 @@ export const MOON: BodyConfig = {
   }
 };
 
+const BODY_BY_ID: ReadonlyMap<BodyId, BodyConfig> = new Map<BodyId, BodyConfig>([
+  ...BODIES.map((b) => [b.id, b] as const),
+  ["moon", MOON]
+]);
+
 export function getBody(id: BodyId): BodyConfig {
-  if (id === "moon") return MOON;
-  const found = BODIES.find((b) => b.id === id);
+  const found = BODY_BY_ID.get(id);
   if (!found) throw new Error(`Unknown body id: ${id}`);
   return found;
 }
 
 /** Runtime type guard: validates that an arbitrary string is a known BodyId. */
-const ALL_BODY_IDS: ReadonlySet<string> = new Set<string>([...BODIES.map((b) => b.id), "moon"]);
-
 export function isBodyId(id: string): id is BodyId {
-  return ALL_BODY_IDS.has(id);
+  return BODY_BY_ID.has(id as BodyId);
 }

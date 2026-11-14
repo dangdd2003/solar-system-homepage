@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import { MeshStandardMaterial, SRGBColorSpace, Texture } from "three";
 import { type EclipseShadowHandle, injectEclipseShadow } from "./eclipse-shadow";
 import { installReveal, type RevealHandle } from "./reveal-material";
 import { solidTexture } from "./solid-texture";
@@ -30,9 +30,9 @@ export const NIGHT_LIGHTS_INTENSITY = 1.6;
  * shows exactly the flat blue the other planets do.
  */
 export interface EarthMaterial {
-  material: THREE.MeshStandardMaterial;
+  material: MeshStandardMaterial;
   /** Feed the streamed night-lights map in once it loads (live uniform swap). */
-  setNightMap: (tex: THREE.Texture) => void;
+  setNightMap: (tex: Texture) => void;
   /** Night-lights strength: 0 is dark, NIGHT_LIGHTS_INTENSITY is the full glow. */
   setNightIntensity: (intensity: number) => void;
   /** Dissolve of the daymap from the flat base colour. */
@@ -52,10 +52,10 @@ export function buildEarthMaterial(
   // first compile, and white passes the base color through unchanged until the
   // real daymap loads. The texture loader swaps `material.map` in later.
   const dayPlaceholder = solidTexture(255, 255, 255);
-  dayPlaceholder.colorSpace = THREE.SRGBColorSpace;
+  dayPlaceholder.colorSpace = SRGBColorSpace;
 
   // White, so the daymap shows in its own colours. The base colour is the reveal's flat colour.
-  const material = new THREE.MeshStandardMaterial({
+  const material = new MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.8,
     map: dayPlaceholder
@@ -70,7 +70,7 @@ export function buildEarthMaterial(
   // onBeforeCompile assigns THESE uniform objects onto the compiled shader, so
   // mutating .value here reaches the GPU without a recompile. Starts dark: the
   // lights fade up once their map has been applied.
-  const nightMap: { value: THREE.Texture } = { value: nightPlaceholder };
+  const nightMap: { value: Texture } = { value: nightPlaceholder };
   const nightIntensity = { value: 0 };
 
   material.onBeforeCompile = (shader) => {
@@ -136,7 +136,7 @@ varying vec3 vEarthWorldNormal;`
   let disposed = false;
   return {
     material,
-    setNightMap(tex: THREE.Texture) {
+    setNightMap(tex: Texture) {
       // Colour space is set by the loader's upload, before this runs (the one writer for streamed
       // textures). Sampler-only swap: the placeholder already fixed the program, so no needsUpdate.
       nightMap.value = tex;

@@ -12,6 +12,7 @@ import { createTimeline } from "animejs/timeline";
 import { spring } from "animejs/easings";
 import { stagger } from "animejs/utils";
 import { clearTextClip } from "./text-clip";
+import { clearPrimedGlass } from "./pools/glass";
 import type {
   EasingParam,
   Spring,
@@ -221,10 +222,12 @@ export function sizeOf(el: HTMLElement): { w: number; h: number } {
   return primedSizes.get(el) ?? { w: el.offsetWidth, h: el.offsetHeight };
 }
 
-/** Drops the primed rects and sizes once the cascade's writes are done. */
+/** Drops the primed rects, sizes, colors, and glass flags once the cascade's writes are done. */
 export function clearPrimedRects(): void {
   primedRects.clear();
   primedSizes.clear();
+  primedColors.clear();
+  clearPrimedGlass();
 }
 
 /** The cascade items inside a host: its `data-reveal-items` selector, or every `li` when the attribute is missing or empty. */
@@ -234,7 +237,8 @@ export function itemsOf(el: HTMLElement): HTMLElement[] {
 
 /** Whether a host is taller than it is wide, so its long axis runs vertically. */
 export function isVertical(el: HTMLElement): boolean {
-  return el.offsetHeight > el.offsetWidth;
+  const s = sizeOf(el);
+  return s.h > s.w;
 }
 
 /**
@@ -280,9 +284,17 @@ export function contentParts(el: HTMLElement, max: number): HTMLElement[] {
     .slice(0, max);
 }
 
+/** Text colors read in the cascade read phase. */
+const primedColors = new Map<Element, string>();
+
+/** Reads and remembers an element's text color for the current cascade (engine read phase). */
+export function primeColor(el: Element, style: CSSStyleDeclaration = getComputedStyle(el)): void {
+  primedColors.set(el, style.color || "rgb(255, 255, 255)");
+}
+
 /** The element's text colour, with white as the fallback. */
 export function readColor(el: Element): string {
-  return getComputedStyle(el).color || "rgb(255, 255, 255)";
+  return primedColors.get(el) ?? (getComputedStyle(el).color || "rgb(255, 255, 255)");
 }
 
 /** Shared host fade with a vertical settle; the legacy fade-up body. */

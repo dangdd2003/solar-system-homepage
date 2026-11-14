@@ -71,10 +71,11 @@ export const OG_CARDS = {
  * The cards as og:image entries. `?v=` is a hash of the rendered bytes: Facebook, LinkedIn and Zalo
  * cache previews per image URL, so a changed card gets a new URL and is re-fetched on the next share.
  */
-export async function ogImages(): Promise<[SocialImage, ...SocialImage[]]> {
-  const ids = Object.keys(OG_CARDS) as OgCardId[];
-  return Promise.all(
-    ids.map(async (id): Promise<SocialImage> => {
+let ogImagesPromise: Promise<[SocialImage, ...SocialImage[]]> | undefined;
+
+export function ogImages(): Promise<[SocialImage, ...SocialImage[]]> {
+  ogImagesPromise ??= Promise.all(
+    (Object.keys(OG_CARDS) as OgCardId[]).map(async (id): Promise<SocialImage> => {
       const hash = createHash("sha256")
         .update(await renderOgCard(id))
         .digest("hex")
@@ -87,6 +88,7 @@ export async function ogImages(): Promise<[SocialImage, ...SocialImage[]]> {
       };
     })
   ) as Promise<[SocialImage, ...SocialImage[]]>;
+  return ogImagesPromise;
 }
 
 type Node = { type: string; props: Record<string, unknown> };
@@ -155,12 +157,12 @@ ${planetDots}
 }
 
 async function avatarDataUri(size: number): Promise<string> {
-  const jpeg = await sharp(AVATAR_PATH)
+  const png = await sharp(AVATAR_PATH)
     .extract(AVATAR_CROP)
     .resize(size * 2, size * 2)
-    .jpeg({ quality: 88, mozjpeg: true })
+    .png({ compressionLevel: 0 })
     .toBuffer();
-  return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
+  return `data:image/png;base64,${png.toString("base64")}`;
 }
 
 let fontsPromise: Promise<Parameters<typeof satori>[1]["fonts"]> | undefined;
@@ -199,6 +201,7 @@ async function drawOgCard(id: OgCardId): Promise<Buffer> {
   const { width, height, avatar } = layout;
   const ring = Math.round(avatar * 0.035);
   const photo = avatar - ring * 2;
+  const [avatarSrc, fonts] = await Promise.all([avatarDataUri(photo), loadFonts()]);
 
   const stack = h("div", { flexDirection: "column", alignItems: "center" }, [
     h(
@@ -213,7 +216,7 @@ async function drawOgCard(id: OgCardId): Promise<Buffer> {
         marginBottom: layout.name * 0.38
       },
       h("img", { width: photo, height: photo, borderRadius: photo }, undefined, {
-        src: await avatarDataUri(photo),
+        src: avatarSrc,
         width: photo,
         height: photo
       })
@@ -266,17 +269,14 @@ async function drawOgCard(id: OgCardId): Promise<Buffer> {
       },
       stack
     ) as Parameters<typeof satori>[0],
-    { width, height, fonts: await loadFonts() }
+    { width, height, fonts }
   );
 
   // Sun sits between the avatar and the name, where the original 3D scene puts it.
   const stackHeight = avatar + layout.name * 1.48 + layout.tagline * 3.4 + 2 + layout.domain * 1.2;
   const sunY = height * layout.centerY - stackHeight / 2 + avatar + layout.name * 0.2;
-  const background = await sharp(Buffer.from(backgroundSvg(layout, sunY)))
-    .png()
-    .toBuffer();
 
-  return sharp(background)
+  return sharp(Buffer.from(backgroundSvg(layout, sunY)))
     .composite([{ input: Buffer.from(svg) }])
     .jpeg({ quality: 84, mozjpeg: true, progressive: true, chromaSubsampling: "4:4:4" })
     .toBuffer();

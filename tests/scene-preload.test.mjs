@@ -149,3 +149,78 @@ for (const assetsPrefix of [
     );
   });
 }
+
+test("preloads boot chunk, static imports, transitive imports, and handles cycles idempotently", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "scene-preload-graph-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const dir = pathToFileURL(`${root}/`);
+  const integration = scenePreload();
+  let plugin;
+  integration.hooks["astro:config:setup"]({
+    updateConfig(config) {
+      [plugin] = config.vite.plugins;
+    }
+  });
+  integration.hooks["astro:config:done"]({
+    config: { base: "/", build: { assetsPrefix: "" } }
+  });
+  const bundle = {
+    "_astro/boot.js": {
+      type: "chunk",
+      fileName: "_astro/boot.js",
+      facadeModuleId: "/site/src/scripts/solar-system-boot.ts",
+      imports: ["_astro/vendor-a.js", "_astro/missing.js"],
+      code: "",
+      modules: {}
+    },
+    "_astro/vendor-a.js": {
+      type: "chunk",
+      fileName: "_astro/vendor-a.js",
+      facadeModuleId: null,
+      imports: ["_astro/vendor-b.js"],
+      code: "",
+      modules: {}
+    },
+    "_astro/vendor-b.js": {
+      type: "chunk",
+      fileName: "_astro/vendor-b.js",
+      facadeModuleId: null,
+      imports: ["_astro/vendor-a.js", "_astro/boot.js"],
+      code: "",
+      modules: {}
+    },
+    "_astro/unrelated.js": {
+      type: "chunk",
+      fileName: "_astro/unrelated.js",
+      facadeModuleId: null,
+      imports: [],
+      code: "",
+      modules: {}
+    },
+    "_astro/asset.png": {
+      type: "asset",
+      fileName: "_astro/asset.png"
+    }
+  };
+  await plugin.generateBundle.call({ environment: { name: "client" } }, {}, bundle);
+  await writeFile(join(root, "index.html"), scene);
+  await integration.hooks["astro:build:generated"]({ dir });
+
+  const html = await readFile(join(root, "index.html"), "utf8");
+  assert.match(html, /href="\/_astro\/boot\.js"/);
+  assert.match(html, /href="\/_astro\/vendor-a\.js"/);
+  assert.match(html, /href="\/_astro\/vendor-b\.js"/);
+  assert.doesNotMatch(html, /unrelated\.js/);
+  assert.doesNotMatch(html, /missing\.js/);
+  assert.doesNotMatch(html, /asset\.png/);
+
+  // Idempotent on second run
+  await integration.hooks["astro:build:generated"]({ dir });
+  assert.equal(await readFile(join(root, "index.html"), "utf8"), html);
+
+  // Reset on astro:build:start
+  integration.hooks["astro:build:start"]();
+  await writeFile(join(root, "after-reset.html"), scene);
+  await integration.hooks["astro:build:generated"]({ dir });
+  assert.equal(await readFile(join(root, "after-reset.html"), "utf8"), scene);
+});

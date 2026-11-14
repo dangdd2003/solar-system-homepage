@@ -1,4 +1,20 @@
-import * as THREE from "three";
+import {
+  AdditiveBlending,
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  DoubleSide,
+  LineBasicMaterial,
+  LineLoop,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  Points,
+  PointsMaterial,
+  RingGeometry,
+  SphereGeometry,
+  Vector3
+} from "three";
 import { BODIES, type BodyId, getBody } from "./bodies";
 import { ellipsePosition } from "./ellipse";
 import { orbitPointFor } from "./orbital-plane";
@@ -60,12 +76,12 @@ export function starfieldPointStyle(pixelRatio: number): { size: number; opacity
  * Tier 1: Distant micro-stars with uniform spherical distribution and power-law brightness.
  * Tier 2: Prominent focal stars with density biased toward the galactic equator.
  */
-export function buildStarfield(microCount: number, focalCount = 350): THREE.Points {
+export function buildStarfield(microCount: number, focalCount = 350): Points {
   const RADIUS = 380;
   const totalCount = microCount + focalCount;
   const positions = new Float32Array(totalCount * 3);
   const colors = new Float32Array(totalCount * 3);
-  const color = new THREE.Color();
+  const color = new Color();
 
   let idx = 0;
 
@@ -115,38 +131,43 @@ export function buildStarfield(microCount: number, focalCount = 350): THREE.Poin
     idx++;
   }
 
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  const geo = new BufferGeometry();
+  geo.setAttribute("position", new BufferAttribute(positions, 3));
+  geo.setAttribute("color", new BufferAttribute(colors, 3));
 
-  const material = new THREE.PointsMaterial({
+  const material = new PointsMaterial({
     size: STAR_CSS_SIZE,
     sizeAttenuation: false,
     vertexColors: true,
     transparent: true,
     opacity: STAR_BASE_OPACITY,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    blending: AdditiveBlending,
     fog: false
   });
 
-  const points = new THREE.Points(geo, material);
+  const points = new Points(geo, material);
   points.matrixAutoUpdate = false;
   points.updateMatrix();
   points.renderOrder = 0;
   // Runs right before this object is drawn, with the ratio the drawing buffer uses in that frame,
   // so the stars always match the buffer (no stale ratio, no extra render hook).
+  let lastPixelRatio = -1;
   points.onBeforeRender = (renderer) => {
-    const style = starfieldPointStyle(renderer.getPixelRatio());
+    const pr = renderer.getPixelRatio();
+    if (pr === lastPixelRatio) return;
+    lastPixelRatio = pr;
+    const style = starfieldPointStyle(pr);
     material.size = style.size;
     material.opacity = style.opacity;
   };
   return points;
 }
 
-export function buildOrbitLines(radii: Map<BodyId, number>): THREE.LineLoop[] {
+export function buildOrbitLines(radii: Map<BodyId, number>): LineLoop[] {
   const segments = 160;
-  const lines: THREE.LineLoop[] = [];
+  const lines: LineLoop[] = [];
+  let mat: LineBasicMaterial | null = null;
   for (const body of BODIES) {
     const orbitRadius = radii.get(body.id) ?? 0;
     if (orbitRadius === 0) continue;
@@ -162,14 +183,14 @@ export function buildOrbitLines(radii: Map<BodyId, number>): THREE.LineLoop[] {
       positions[i * 3 + 1] = p.y;
       positions[i * 3 + 2] = p.z;
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.LineBasicMaterial({
+    const geo = new BufferGeometry();
+    geo.setAttribute("position", new BufferAttribute(positions, 3));
+    mat ??= new LineBasicMaterial({
       color: 0xffffff,
       transparent: true,
       opacity: 0.15
     });
-    const line = new THREE.LineLoop(geo, mat);
+    const line = new LineLoop(geo, mat);
     line.matrixAutoUpdate = false;
     line.updateMatrix();
     lines.push(line);
@@ -178,18 +199,18 @@ export function buildOrbitLines(radii: Map<BodyId, number>): THREE.LineLoop[] {
 }
 
 export interface BuiltBodies {
-  meshes: Map<BodyId, THREE.Mesh>;
+  meshes: Map<BodyId, Mesh>;
   /** The animated Sun (photosphere + halo). Its group is what the scene adds;
    *  its photosphere mesh is also in `meshes` for picking and the orbit loop. */
   sun: AnimatedSun;
-  moon: THREE.Mesh;
+  moon: Mesh;
   /** Transparent cloud layer parented to Earth; rotates slightly faster. */
-  earthClouds: THREE.Mesh;
+  earthClouds: Mesh;
   /** Earth's day/night material; its night-lights map is streamed in later. */
   earthMaterial: EarthMaterial;
-  moonOrbitLine: THREE.LineLoop;
+  moonOrbitLine: LineLoop;
   /** Saturn's ring mesh (a child of Saturn), or null when the body list has none. */
-  ring: THREE.Mesh | null;
+  ring: Mesh | null;
   /**
    * Dissolve handles for the surfaces that reveal when their texture lands, keyed by
    * texture job. The Sun reveals through `sun.setReveal` and Earth's lights and clouds
@@ -206,13 +227,14 @@ export interface BuildBodiesOptions {
 export function buildBodies(profile: QualityProfile, opts: BuildBodiesOptions = {}): BuiltBodies {
   const seg = profile.sphereSegments;
   const revealSweep = opts.revealSweep ?? true;
-  const meshes = new Map<BodyId, THREE.Mesh>();
+  const meshes = new Map<BodyId, Mesh>();
   const reveals = new Map<BodyId | "saturn_ring", RevealHandle>();
-  let moon: THREE.Mesh | null = null;
-  let earthClouds: THREE.Mesh | null = null;
+  const haloGeo = new SphereGeometry(1, Math.max(32, seg), Math.max(24, seg));
+  let moon: Mesh | null = null;
+  let earthClouds: Mesh | null = null;
   let earthMaterial: EarthMaterial | null = null;
-  let moonOrbitLine: THREE.LineLoop | null = null;
-  let ring: THREE.Mesh | null = null;
+  let moonOrbitLine: LineLoop | null = null;
+  let ring: Mesh | null = null;
 
   // The Sun is a living star (animated plasma + halo), not a flat sphere.
   const sunSize = getBody("sun").size;
@@ -221,10 +243,10 @@ export function buildBodies(profile: QualityProfile, opts: BuildBodiesOptions = 
 
   for (const body of BODIES) {
     if (body.id === "sun") continue; // built above as the animated Sun
-    const geo = new THREE.SphereGeometry(body.size, seg, seg);
+    const geo = new SphereGeometry(body.size, seg, seg);
     // Earth is special: a day/night material (city lights on the far side) vs
     // the plain lit material every other planet uses.
-    let mat: THREE.MeshStandardMaterial;
+    let mat: MeshStandardMaterial;
     if (body.id === "earth") {
       earthMaterial = buildEarthMaterial(body.color, sunSize, {
         revealSweep,
@@ -237,7 +259,7 @@ export function buildBodies(profile: QualityProfile, opts: BuildBodiesOptions = 
       // streamed surface texture never forces a shader recompile. The colour is
       // white, and the reveal draws the body colour as its flat look until the
       // texture dissolves in.
-      mat = new THREE.MeshStandardMaterial({
+      mat = new MeshStandardMaterial({
         color: 0xffffff,
         roughness: 0.8,
         map: solidTexture(255, 255, 255)
@@ -247,22 +269,22 @@ export function buildBodies(profile: QualityProfile, opts: BuildBodiesOptions = 
         installReveal(mat, { flatColor: body.color, sweep: revealSweep, radius: body.size })
       );
     }
-    const mesh = new THREE.Mesh(geo, mat);
+    const mesh = new Mesh(geo, mat);
     mesh.userData.bodyId = body.id;
     meshes.set(body.id, mesh);
 
     if (body.id === "saturn") {
       const inner = body.size * 1.4;
       const outer = body.size * 2.2;
-      const ringGeo = new THREE.RingGeometry(inner, outer, 96);
+      const ringGeo = new RingGeometry(inner, outer, 96);
       remapRingUVsRadial(ringGeo, inner, outer);
-      const ringMat = new THREE.MeshBasicMaterial({
+      const ringMat = new MeshBasicMaterial({
         // White, so the streamed texture shows in its own colours. The tint is the
         // reveal's flat colour, shown until the ring texture dissolves in. White map
         // + alpha placeholders keep USE_MAP / USE_ALPHAMAP fixed so the streamed ring
         // texture does not trigger a shader recompile.
         color: 0xffffff,
-        side: THREE.DoubleSide,
+        side: DoubleSide,
         transparent: true,
         opacity: RING_FLAT_OPACITY,
         map: solidTexture(255, 255, 255),
@@ -270,20 +292,20 @@ export function buildBodies(profile: QualityProfile, opts: BuildBodiesOptions = 
       });
       // The ring has no noise, so its reveal is a plain crossfade of the tint.
       reveals.set("saturn_ring", installReveal(ringMat, { flatColor: 0xd9c27a, sweep: false }));
-      ring = new THREE.Mesh(ringGeo, ringMat);
+      ring = new Mesh(ringGeo, ringMat);
       ring.rotation.x = Math.PI / 2.2;
       mesh.add(ring);
     }
 
     if (body.id === "earth") {
-      const builtMoon = buildMoon(body.size, seg, revealSweep);
+      const builtMoon = buildMoon(body.size, seg, revealSweep, haloGeo);
       moon = builtMoon.mesh;
       moonOrbitLine = builtMoon.orbitLine;
       reveals.set("moon", builtMoon.reveal);
       earthClouds = buildEarthClouds(mesh, body.size, seg);
     }
     const surfaceReveal = reveals.get(body.id);
-    if (surfaceReveal) attachPlanetHalo(mesh, body.id, body.size, seg, surfaceReveal);
+    if (surfaceReveal) attachPlanetHalo(mesh, body.id, body.size, seg, surfaceReveal, haloGeo);
   }
 
   if (!moon || !earthClouds || !earthMaterial || !moonOrbitLine) {
@@ -297,11 +319,11 @@ export function buildBodies(profile: QualityProfile, opts: BuildBodiesOptions = 
  *  inner to outer edge along the image's width). Remap so U = normalized radial
  *  distance (inner edge -> 0, outer edge -> 1) and V is centred, so each ring
  *  band samples the correct column of the strip. */
-function remapRingUVsRadial(geo: THREE.RingGeometry, inner: number, outer: number): void {
+function remapRingUVsRadial(geo: RingGeometry, inner: number, outer: number): void {
   const pos = geo.attributes.position;
   const uv = geo.attributes.uv;
   if (!pos || !uv) return;
-  const v3 = new THREE.Vector3();
+  const v3 = new Vector3();
   for (let i = 0; i < pos.count; i++) {
     v3.fromBufferAttribute(pos, i);
     const radius = Math.hypot(v3.x, v3.y);
@@ -314,10 +336,10 @@ function remapRingUVsRadial(geo: THREE.RingGeometry, inner: number, outer: numbe
 /** A slightly larger, transparent sphere over Earth for the cloud layer. Its
  *  cloud texture is applied later by the texture loader, and the clouds fade
  *  in from hidden (opacity 0, not drawn) once it lands. */
-function buildEarthClouds(earth: THREE.Mesh, earthSize: number, seg: number): THREE.Mesh {
-  const clouds = new THREE.Mesh(
-    new THREE.SphereGeometry(earthSize * 1.02, seg, seg),
-    new THREE.MeshStandardMaterial({
+function buildEarthClouds(earth: Mesh, earthSize: number, seg: number): Mesh {
+  const clouds = new Mesh(
+    new SphereGeometry(earthSize * 1.02, seg, seg),
+    new MeshStandardMaterial({
       color: 0xffffff,
       transparent: true,
       opacity: 0,
@@ -339,8 +361,9 @@ function buildEarthClouds(earth: THREE.Mesh, earthSize: number, seg: number): TH
 function buildMoon(
   earthSize: number,
   seg: number,
-  revealSweep: boolean
-): { mesh: THREE.Mesh; orbitLine: THREE.LineLoop; reveal: RevealHandle } {
+  revealSweep: boolean,
+  haloGeo: SphereGeometry
+): { mesh: Mesh; orbitLine: LineLoop; reveal: RevealHandle } {
   const segments = 64;
   const positions = new Float32Array((segments + 1) * 3);
   for (let i = 0; i <= segments; i++) {
@@ -351,18 +374,18 @@ function buildMoon(
     positions[i * 3 + 1] = z * MOON_SIN_INCL;
     positions[i * 3 + 2] = z * MOON_COS_INCL;
   }
-  const ringGeo = new THREE.BufferGeometry();
-  ringGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const ringMat = new THREE.LineBasicMaterial({
+  const ringGeo = new BufferGeometry();
+  ringGeo.setAttribute("position", new BufferAttribute(positions, 3));
+  const ringMat = new LineBasicMaterial({
     color: 0xffffff,
     transparent: true,
     opacity: 0.2
   });
-  const orbitLine = new THREE.LineLoop(ringGeo, ringMat);
+  const orbitLine = new LineLoop(ringGeo, ringMat);
   orbitLine.renderOrder = 0;
 
   const moonRadius = earthSize * MOON_SIZE;
-  const moonMat = new THREE.MeshStandardMaterial({
+  const moonMat = new MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.95,
     map: solidTexture(255, 255, 255)
@@ -373,11 +396,11 @@ function buildMoon(
     radius: moonRadius
   });
 
-  const moon = new THREE.Mesh(new THREE.SphereGeometry(moonRadius, seg, seg), moonMat);
+  const moon = new Mesh(new SphereGeometry(moonRadius, seg, seg), moonMat);
   // Tag it like the planets so the raycaster (SolarSystem.pickAt) can identify
   // a click/hover on the Moon and focus it, just like any other body.
   moon.userData.bodyId = "moon";
-  attachPlanetHalo(moon, "moon", moonRadius, seg, moonReveal);
+  attachPlanetHalo(moon, "moon", moonRadius, seg, moonReveal, haloGeo);
   // Start a quarter-turn around (+Z), off the Sun→Earth axis, so the rest pose
   // isn't a total eclipse. SolarSystem's onFrame keeps it here at orbitTime=0
   // (MOON_START_PHASE); this matches that for the first pre-frame moment.

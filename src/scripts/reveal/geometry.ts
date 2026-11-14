@@ -36,7 +36,8 @@ export function measureHost(el: HTMLElement, type: RevealType): HostGeometry {
   const words = wordTokens.length;
 
   const isLink = el.tagName === "A" || el.querySelector("a") !== null;
-  const focusable = el.matches(FOCUSABLE_SELECTOR) || el.querySelector(FOCUSABLE_SELECTOR) !== null;
+  const focusable =
+    isLink || el.matches(FOCUSABLE_SELECTOR) || el.querySelector(FOCUSABLE_SELECTOR) !== null;
 
   const hasNosplit =
     el.hasAttribute("data-reveal-nosplit") || el.querySelector("[data-reveal-nosplit]") !== null;
