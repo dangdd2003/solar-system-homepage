@@ -1,7 +1,18 @@
-import * as THREE from "three";
+import {
+  AdditiveBlending,
+  BackSide,
+  Color,
+  MathUtils,
+  Mesh,
+  PerspectiveCamera,
+  ShaderMaterial,
+  SphereGeometry,
+  Vector2,
+  Vector3
+} from "three";
 import type { BodyId } from "./bodies";
 import type { RevealHandle } from "./reveal-material";
-import { discRadiusPx, smoothstep } from "./sun-halo";
+import { smoothstep } from "./sun-halo";
 
 type PlanetId = Exclude<BodyId, "sun">;
 
@@ -21,6 +32,8 @@ export const PLANET_HALO_STYLES: Readonly<Record<PlanetId, { color: number; gain
 /** Distance is measured in body radii so the Moon and gas giants share the same zoom curve. */
 const NEAR_DISTANCE_RADII = 4;
 const FAR_DISTANCE_RADII = 80;
+const LOG_NEAR_RADII = Math.log(NEAR_DISTANCE_RADII);
+const LOG_FAR_RADII = Math.log(FAR_DISTANCE_RADII);
 const NEAR_WIDTH_FRACTION = 0.22;
 const FAR_WIDTH_FRACTION = 0.38;
 const WIDTH_CAP_PX = 28;
@@ -51,27 +64,26 @@ export function planetHaloMetrics(
     out.gainScale = 0;
     return out;
   }
-  const discPx = discRadiusPx(radius, distance, viewportHeight, fov);
-  const far = smoothstep(
-    Math.log(NEAR_DISTANCE_RADII),
-    Math.log(FAR_DISTANCE_RADII),
-    Math.log(distance / radius)
-  );
-  const widthFraction = THREE.MathUtils.lerp(NEAR_WIDTH_FRACTION, FAR_WIDTH_FRACTION, far);
+  const halfTan = Math.tan(MathUtils.degToRad(fov) / 2);
+  const dSafe = Math.max(distance, radius * 1.0001);
+  const H = Math.max(1, viewportHeight);
+  const discPx = ((H / 2) * radius) / (Math.sqrt(dSafe * dSafe - radius * radius) * halfTan);
+  const far = smoothstep(LOG_NEAR_RADII, LOG_FAR_RADII, Math.log(distance / radius));
+  const widthFraction = MathUtils.lerp(NEAR_WIDTH_FRACTION, FAR_WIDTH_FRACTION, far);
   const floor = WIDTH_FLOOR_PX * smoothstep(0, 8, discPx);
   const widthPx = Math.min(
     WIDTH_CAP_PX,
     viewportHeight * 0.08,
     Math.max(floor, discPx * widthFraction)
   );
-  const focalPx = viewportHeight / (2 * Math.tan(THREE.MathUtils.degToRad(fov) / 2));
+  const focalPx = viewportHeight / (2 * halfTan);
   const outerRadius = distance * Math.sin(Math.atan((discPx + widthPx) / focalPx));
   out.widthPx = widthPx;
   out.widthWorld = Math.max(0, outerRadius - radius);
   // Only subpixel bodies fade away; ordinary overview planets keep their light.
   out.visibility = smoothstep(0, 3.5, discPx);
   const largeDiscDim = 0.4 * smoothstep(viewportHeight * 0.35, viewportHeight * 0.8, discPx);
-  out.gainScale = THREE.MathUtils.lerp(0.62, 1, far) * (1 - largeDiscDim);
+  out.gainScale = MathUtils.lerp(0.62, 1, far) * (1 - largeDiscDim);
   return out;
 }
 
@@ -123,31 +135,32 @@ void main() {
  * The shell follows its parent's orbit, spin and entrance; normal scene disposal frees it.
  */
 export function attachPlanetHalo(
-  body: THREE.Mesh,
+  body: Mesh,
   id: PlanetId,
   radius: number,
   segments: number,
-  reveal: RevealHandle
-): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
+  reveal: RevealHandle,
+  geometry?: SphereGeometry
+): Mesh<SphereGeometry, ShaderMaterial> {
   const style = PLANET_HALO_STYLES[id];
   const uniforms = {
-    uColor: { value: new THREE.Color(style.color) },
+    uColor: { value: new Color(style.color) },
     uRadius: { value: radius },
     uWidth: { value: 0 },
     uGain: { value: 0 }
   };
-  const material = new THREE.ShaderMaterial({
+  const material = new ShaderMaterial({
     uniforms,
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
-    side: THREE.BackSide,
+    side: BackSide,
     transparent: true,
-    blending: THREE.AdditiveBlending,
+    blending: AdditiveBlending,
     depthWrite: false,
     toneMapped: false
   });
-  const shell = new THREE.Mesh(
-    new THREE.SphereGeometry(radius, Math.max(32, segments), Math.max(24, segments)),
+  const shell = new Mesh(
+    geometry ?? new SphereGeometry(1, Math.max(32, segments), Math.max(24, segments)),
     material
   );
   shell.name = `${id}-halo`;
@@ -160,25 +173,26 @@ export function attachPlanetHalo(
   const setProgress = reveal.setProgress;
   reveal.setProgress = (value) => {
     setProgress(value);
-    progress = THREE.MathUtils.clamp(value, 0, 1);
+    progress = MathUtils.clamp(value, 0, 1);
   };
-  const size = new THREE.Vector2();
-  const center = new THREE.Vector3();
-  const scale = new THREE.Vector3();
-  const cameraPosition = new THREE.Vector3();
+  const size = new Vector2();
+  const center = new Vector3();
+  const scale = new Vector3();
+  const cameraPosition = new Vector3();
   const metrics: PlanetHaloMetrics = { widthPx: 0, widthWorld: 0, visibility: 0, gainScale: 0 };
   shell.onBeforeRender = (renderer, _scene, camera) => {
-    if (!(camera instanceof THREE.PerspectiveCamera)) {
+    if (!(camera instanceof PerspectiveCamera)) {
       uniforms.uGain.value = 0;
       return;
     }
     renderer.getSize(size);
     body.getWorldPosition(center);
     // Not getWorldScale: since three 0.187 it reports a zero-scaled body as scale 1.
-    body.updateWorldMatrix(true, false);
+    // body.getWorldPosition() above already updated body.matrixWorld.
     scale.setFromMatrixScale(body.matrixWorld);
     const worldRadius = radius * Math.max(scale.x, scale.y, scale.z);
-    const distance = camera.getWorldPosition(cameraPosition).distanceTo(center);
+    cameraPosition.setFromMatrixPosition(camera.matrixWorld);
+    const distance = cameraPosition.distanceTo(center);
     // Frame height, not canvas height: the canvas may bleed below the frame (CameraRig.setFrame).
     const frameHeight = camera.view?.enabled
       ? (camera.view.fullHeight * size.y) / camera.view.height
@@ -191,7 +205,9 @@ export function attachPlanetHalo(
     const entrance = Math.min(1, worldRadius / radius);
     uniforms.uGain.value =
       style.gain * (0.25 + 0.75 * progress) * metrics.visibility * metrics.gainScale * entrance;
-    shell.scale.setScalar(worldRadius > 0 ? (1 + metrics.widthWorld / worldRadius) * 1.015 : 1);
+    shell.scale.setScalar(
+      worldRadius > 0 ? radius * (1 + metrics.widthWorld / worldRadius) * 1.015 : radius
+    );
     shell.updateMatrixWorld(true);
   };
   return shell;

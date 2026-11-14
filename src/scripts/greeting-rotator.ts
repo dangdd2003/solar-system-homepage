@@ -60,9 +60,9 @@ export function initGreetingRotator(
   };
   fitTo(current);
 
+  const panel = root.closest<HTMLElement>("[data-planet-panel]");
   const isPaused = (): boolean => {
     if (typeof document !== "undefined" && document.hidden) return true;
-    const panel = root.closest<HTMLElement>("[data-planet-panel]");
     if (panel) {
       if (panel.getAttribute("aria-hidden") === "true") return true;
       if (panel.style.display === "none" || panel.style.visibility === "hidden") return true;

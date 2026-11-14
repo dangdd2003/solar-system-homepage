@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import { WebGLRenderer } from "three";
 
 /**
  * Frame rate the WebGL scene is drawn at at most, in ms per draw (about 120 fps).
@@ -46,7 +46,7 @@ export interface RenderLoopOptions {
  * jump planets forward, because the clock was stopped rather than ignored.
  */
 export class RenderLoop {
-  readonly renderer: THREE.WebGLRenderer;
+  readonly renderer: WebGLRenderer;
   private readonly canvas: HTMLCanvasElement;
   // Elapsed scene time, accumulated manually so pausing simply stops it from
   // advancing. THREE.Clock is unusable here: Clock.start() zeroes elapsedTime,
@@ -101,7 +101,7 @@ export class RenderLoop {
     this.isAnimating = opts.isAnimating;
     this.pixelRatioCap = opts.pixelRatioCap;
 
-    this.renderer = new THREE.WebGLRenderer({
+    this.renderer = new WebGLRenderer({
       canvas: opts.canvas,
       antialias: true,
       alpha: true,

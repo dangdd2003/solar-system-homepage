@@ -28,11 +28,25 @@ export function initNavPull(): void {
 
   const page = document.body;
   const root = document.documentElement;
+  const reducedMotionQuery =
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
   let startX = 0;
   let startY = 0;
   let tracking = false;
   let pulling = false;
   let offset = 0;
+  let moveFrame = 0;
+  let pendingOffset: number | null = null;
+
+  const cancelMoveFrame = (): void => {
+    if (moveFrame !== 0) {
+      cancelAnimationFrame(moveFrame);
+      moveFrame = 0;
+    }
+    pendingOffset = null;
+  };
 
   const apply = (px: number): void => {
     offset = px;
@@ -43,6 +57,10 @@ export function initNavPull(): void {
   };
 
   const settle = (px: number, done?: () => void): void => {
+    if (moveFrame !== 0 && pendingOffset !== null) {
+      apply(pendingOffset);
+    }
+    cancelMoveFrame();
     let finished = false;
     let fallback = 0;
     const finish = (): void => {
@@ -58,7 +76,7 @@ export function initNavPull(): void {
     const onEnd = (e: TransitionEvent): void => {
       if (e.target === page && e.propertyName === "transform") finish();
     };
-    const instant = px === offset || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const instant = px === offset || Boolean(reducedMotionQuery?.matches);
     if (!instant) {
       root.classList.add("nav-pull-settling");
       page.addEventListener("transitionend", onEnd);
@@ -107,7 +125,19 @@ export function initNavPull(): void {
         nav.addEventListener("click", swallowClick, { capture: true, once: true });
       }
       e.preventDefault();
-      apply(Math.min(MAX_PX, (dy - SLOP_PX) * RESISTANCE));
+      const nextOffset = Math.min(MAX_PX, (dy - SLOP_PX) * RESISTANCE);
+      offset = nextOffset;
+      pendingOffset = nextOffset;
+      if (moveFrame === 0) {
+        moveFrame = requestAnimationFrame(() => {
+          moveFrame = 0;
+          if (pendingOffset !== null) {
+            const px = pendingOffset;
+            pendingOffset = null;
+            apply(px);
+          }
+        });
+      }
     },
     { passive: false }
   );
@@ -132,6 +162,7 @@ export function initNavPull(): void {
 
   // Back/forward cache restores the page as it was left; never come back mid-pull.
   window.addEventListener("pageshow", () => {
+    cancelMoveFrame();
     root.classList.remove("nav-pull-refreshing", "nav-pull-settling", "nav-pull-active");
     apply(0);
   });

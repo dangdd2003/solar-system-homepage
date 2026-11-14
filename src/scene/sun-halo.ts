@@ -113,13 +113,12 @@ export function haloWidthPx(discPx: number, viewportH: number): number {
  * by up to HALO_LARGE_DISC_DIM as the disc fills the viewport, so a close Sun is a bright disc
  * with a soft edge rather than a white blob.
  */
+const LOG_GAIN_NEAR = Math.log(HALO_GAIN_NEAR_DISTANCE);
+const LOG_GAIN_FAR = Math.log(HALO_GAIN_FAR_DISTANCE);
+
 export function haloPeakGain(d: number, discPx: number, viewportH: number): number {
   const H = Math.max(1, viewportH);
-  const far = smoothstep(
-    Math.log(HALO_GAIN_NEAR_DISTANCE),
-    Math.log(HALO_GAIN_FAR_DISTANCE),
-    Math.log(Math.max(d, 1e-6))
-  );
+  const far = smoothstep(LOG_GAIN_NEAR, LOG_GAIN_FAR, Math.log(Math.max(d, 1e-6)));
   const base = HALO_GAIN_NEAR + (HALO_GAIN_FAR - HALO_GAIN_NEAR) * far;
   const dim =
     HALO_LARGE_DISC_DIM *
@@ -139,9 +138,12 @@ export function sunHaloMetrics(
   fovDeg: number,
   out: SunHaloMetrics = { discPx: 0, widthPx: 0, widthWorld: 0, peakGain: 0 }
 ): SunHaloMetrics {
-  out.discPx = discRadiusPx(R, d, viewportH, fovDeg);
+  const H = Math.max(1, viewportH);
+  const halfTan = halfFovTan(fovDeg);
+  const dSafe = Math.max(d, R * 1.0001);
+  out.discPx = ((H / 2) * R) / (Math.sqrt(dSafe * dSafe - R * R) * halfTan);
   out.widthPx = haloWidthPx(out.discPx, viewportH);
-  out.widthWorld = out.widthPx * worldPerPx(d, viewportH, fovDeg);
+  out.widthWorld = out.widthPx * ((2 * d * halfTan) / H);
   out.peakGain = haloPeakGain(d, out.discPx, viewportH);
   return out;
 }
@@ -172,12 +174,21 @@ export function haloReachesViewport(
   if (rel.z <= 0) return true;
   const H = Math.max(1, viewportH);
   const distance = Math.hypot(rel.x, rel.y, rel.z);
-  const focalPx = H / 2 / halfFovTan(fovDeg);
+  const halfTan = halfFovTan(fovDeg);
+  const focalPx = H / 2 / halfTan;
   const cx = viewportW / 2 + (rel.x / rel.z) * focalPx;
   const cy = H / 2 - (rel.y / rel.z) * focalPx;
 
-  const innerPx = discRadiusPx(innerRadiusWorld, distance, H, fovDeg) / HALO_REACH_MARGIN;
-  const outerPx = discRadiusPx(outerRadiusWorld, distance, H, fovDeg) * HALO_REACH_MARGIN;
+  const dSafeInner = Math.max(distance, innerRadiusWorld * 1.0001);
+  const innerPx =
+    ((H / 2) * innerRadiusWorld) /
+    (Math.sqrt(dSafeInner * dSafeInner - innerRadiusWorld * innerRadiusWorld) * halfTan) /
+    HALO_REACH_MARGIN;
+  const dSafeOuter = Math.max(distance, outerRadiusWorld * 1.0001);
+  const outerPx =
+    (((H / 2) * outerRadiusWorld) /
+      (Math.sqrt(dSafeOuter * dSafeOuter - outerRadiusWorld * outerRadiusWorld) * halfTan)) *
+    HALO_REACH_MARGIN;
 
   const nearX = Math.max(-cx, cx - viewportW, 0);
   const nearY = Math.max(-cy, cy - H, 0);

@@ -46,17 +46,22 @@ export function setupNavIndicator(): () => void {
     });
   }
 
+  type MeasuredLink = { activeLink: HTMLElement | null; left: number; width: number };
+
   /**
    * Place the indicator on the active link. `instant` writes without a transition
    * (used while tracking a resize, so the indicator follows the link frame by frame).
    */
-  function updateIndicator(instant = false): void {
+  function updateIndicator(instant = false, measured?: MeasuredLink): void {
     if (!nav || !indicator) return;
-    const activeLink = nav.querySelector<HTMLElement>('a[aria-current="true"]');
+    const activeLink =
+      measured !== undefined
+        ? measured.activeLink
+        : nav.querySelector<HTMLElement>('a[aria-current="true"]');
     syncDocumentTitle(activeLink);
 
     if (activeLink) {
-      const { left, width } = measureLink(activeLink);
+      const { left, width } = measured !== undefined ? measured : measureLink(activeLink);
 
       if (instant) {
         indicator.style.transition = "none";
@@ -102,22 +107,26 @@ export function setupNavIndicator(): () => void {
     if (!indicator || !nav) return;
     const now = performance.now();
     const activeLink = nav.querySelector<HTMLElement>('a[aria-current="true"]');
+    let measured: MeasuredLink | undefined;
     if (activeLink) {
       const { left, width } = measureLink(activeLink);
+      measured = { activeLink, left, width };
       const moved =
         lastTrack === null ||
         Math.abs(lastTrack.left - left) > TRACK_EPSILON_PX ||
         Math.abs(lastTrack.width - width) > TRACK_EPSILON_PX;
       if (moved) {
         lastTrack = { left, width };
-        updateIndicator(true);
+        updateIndicator(true, measured);
       }
+    } else {
+      measured = { activeLink: null, left: 0, width: 0 };
     }
     if (now < trackUntil) {
       trackFrame = requestAnimationFrame(trackFrameTick);
     } else {
       lastTrack = null;
-      updateIndicator(true);
+      updateIndicator(true, measured);
     }
   };
 
@@ -166,6 +175,7 @@ export function setupNavIndicator(): () => void {
     });
     clicked.setAttribute("aria-current", "true");
     updateIndicator();
+    observer.takeRecords();
   };
 
   links.forEach((link) => {
@@ -176,6 +186,7 @@ export function setupNavIndicator(): () => void {
   const onBrandClick = (): void => {
     links.forEach((l) => l.setAttribute("aria-current", "false"));
     updateIndicator();
+    observer.takeRecords();
   };
 
   // Clear active state instantly if brand (overview) link is clicked
@@ -203,6 +214,7 @@ export function setupNavIndicator(): () => void {
       link.setAttribute("aria-current", String(isMatch));
     });
     updateIndicator();
+    observer.takeRecords();
   };
 
   window.addEventListener("popstate", onPopState);
@@ -213,10 +225,15 @@ export function setupNavIndicator(): () => void {
   };
   window.addEventListener("resize", onResize);
 
+  let resizeFrame = 0;
   let resizeObserver: ResizeObserver | null = null;
   if (typeof ResizeObserver !== "undefined") {
     resizeObserver = new ResizeObserver(() => {
-      updateIndicator();
+      if (resizeFrame !== 0) return;
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = 0;
+        updateIndicator();
+      });
     });
     resizeObserver.observe(nav);
     if (navHeader) {
@@ -249,6 +266,8 @@ export function setupNavIndicator(): () => void {
     initialFrame = 0;
     if (startupFrame !== 0) cancelAnimationFrame(startupFrame);
     startupFrame = 0;
+    if (resizeFrame !== 0) cancelAnimationFrame(resizeFrame);
+    resizeFrame = 0;
     window.removeEventListener("viewport:resize-start", onViewportResizeStart);
     window.removeEventListener("viewport:resize-end", onViewportResizeEnd);
     observer.disconnect();

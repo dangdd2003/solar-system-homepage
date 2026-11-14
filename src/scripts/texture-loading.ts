@@ -159,10 +159,7 @@ export function initTextureLoading(pill = document.getElementById("texture-loadi
   const observer = new MutationObserver(sync);
   observer.observe(pill, {
     attributes: true,
-    attributeFilter: ["hidden", "class", "data-progress"],
-    childList: true,
-    characterData: true,
-    subtree: true
+    attributeFilter: ["hidden", "class", "data-progress"]
   });
   const startupObserver = new MutationObserver(sync);
   startupObserver.observe(document.documentElement, {

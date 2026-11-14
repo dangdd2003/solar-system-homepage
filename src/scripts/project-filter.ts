@@ -4,6 +4,15 @@ import { createLayout, stagger, type AutoLayout } from "animejs";
 /** Tracks cleanup functions per container without mutating the DOM element. */
 const cleanups = new WeakMap<HTMLElement, () => void>();
 
+interface ProjectContainerCache {
+  grid: HTMLElement | null;
+  cards: HTMLElement[];
+  resetBtn: HTMLElement | null;
+}
+
+/** Cached DOM lookups per initialized projects container. */
+const containerCache = new WeakMap<HTMLElement, ProjectContainerCache>();
+
 /** Cached parsed tags per card element (as a Set for O(1) lookups) to avoid repeated JSON parsing during filtering */
 const cardTagCache = new WeakMap<HTMLElement, ReadonlySet<string>>();
 
@@ -39,10 +48,12 @@ function getCardTitle(card: HTMLElement): string {
 }
 
 export function sortProjects(container: HTMLElement, sortMode: SortMode): void {
-  const grid = container.querySelector<HTMLElement>(".projects__grid");
+  const cached = containerCache.get(container);
+  const grid = cached ? cached.grid : container.querySelector<HTMLElement>(".projects__grid");
   if (!grid) return;
+  const cards = cached ? cached.cards : Array.from(grid.querySelectorAll<HTMLElement>(".card"));
   // Precompute sort keys once per card (avoids DOM reads inside the comparator)
-  const keyed = Array.from(grid.querySelectorAll<HTMLElement>(".card"), (card) => ({
+  const keyed = cards.map((card) => ({
     card,
     title: sortMode === "date" ? "" : getCardTitle(card),
     order: sortMode === "date" ? parseInt(card.getAttribute("data-order") || "100", 10) : 0
@@ -60,8 +71,11 @@ export function sortProjects(container: HTMLElement, sortMode: SortMode): void {
 }
 
 export function filterProjects(container: HTMLElement, activeTags: Set<string>): void {
-  const cards = container.querySelectorAll<HTMLElement>(".card");
-  const resetBtn = container.querySelector<HTMLElement>("[data-filter-reset]");
+  const cached = containerCache.get(container);
+  const cards = cached ? cached.cards : container.querySelectorAll<HTMLElement>(".card");
+  const resetBtn = cached
+    ? cached.resetBtn
+    : container.querySelector<HTMLElement>("[data-filter-reset]");
 
   if (resetBtn) {
     if (activeTags.size > 0) {
@@ -105,12 +119,17 @@ export function filterProjects(container: HTMLElement, activeTags: Set<string>):
   });
 }
 
+let reducedMotionMql: MediaQueryList | null | undefined;
+
 /** Reads the live reduced-motion preference, so a change made while the page is open is honoured. */
 function prefersReducedMotion(): boolean {
-  return (
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
+  if (reducedMotionMql === undefined) {
+    reducedMotionMql =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)")
+        : null;
+  }
+  return reducedMotionMql?.matches ?? false;
 }
 
 /** True when a FLIP layout may run now: motion allowed and WAAPI available (jsdom lacks it). */
@@ -190,9 +209,17 @@ export function initProjectFilter(rootElement?: HTMLElement | undefined): () => 
   const overflowPills = container.querySelectorAll<HTMLElement>("[data-overflow-tag]");
   // Queried once per instance: the pill set is static after markup is rendered
   const filterPills = container.querySelectorAll<HTMLElement>("[data-filter-btn]");
+  const pillByTag = new Map<string, HTMLElement>();
+  filterPills.forEach((pill) => {
+    const tag = pill.getAttribute("data-filter-btn")?.trim().toLowerCase();
+    if (tag) pillByTag.set(tag, pill);
+  });
   const sortBtn = container.querySelector<HTMLElement>("[data-project-sort]");
   const sortLabel = container.querySelector<HTMLElement>(".sort-label");
   const grid = container.querySelector<HTMLElement>(".projects__grid");
+  const resetBtnEl = container.querySelector<HTMLElement>("[data-filter-reset]");
+  const cachedCards = Array.from((grid ?? container).querySelectorAll<HTMLElement>(".card"));
+  containerCache.set(container, { grid, cards: cachedCards, resetBtn: resetBtnEl });
   let layout: AutoLayout | null = grid ? createGridLayout(grid) : null;
   // Drops the FLIP layout (and any in-flight run) once motion is no longer allowed
   const dropLayout = (): void => {
@@ -247,6 +274,20 @@ export function initProjectFilter(rootElement?: HTMLElement | undefined): () => 
     }
   };
 
+  const hasActiveOverflowPill = (): boolean => {
+    for (let i = 0; i < overflowPills.length; i++) {
+      if (overflowPills[i]!.getAttribute("aria-pressed") === "true") return true;
+    }
+    return false;
+  };
+
+  const hasVisibleOverflowPill = (): boolean => {
+    for (let i = 0; i < overflowPills.length; i++) {
+      if (!overflowPills[i]!.hidden) return true;
+    }
+    return false;
+  };
+
   const updateToggleState = () => {
     const totalOverflow = overflowPills.length;
     if (totalOverflow === 0) {
@@ -296,9 +337,7 @@ export function initProjectFilter(rootElement?: HTMLElement | undefined): () => 
     }
 
     // Highlight toggle button if any overflow tag is currently active
-    const hasActiveOverflow = Array.from(overflowPills).some(
-      (pill) => pill.getAttribute("aria-pressed") === "true"
-    );
+    const hasActiveOverflow = hasActiveOverflowPill();
     if (moreBtn) moreBtn.classList.toggle("is-active", hasActiveOverflow && !moreBtn.hidden);
     if (lessBtn) lessBtn.classList.toggle("is-active", hasActiveOverflow && !lessBtn.hidden);
   };
@@ -316,11 +355,7 @@ export function initProjectFilter(rootElement?: HTMLElement | undefined): () => 
 
   const collapseOverflow = (restoreFocus = false) => {
     // Don't collapse overflow pills if any of them are active
-    const hasActiveOverflow = Array.from(overflowPills).some(
-      (pill) => pill.getAttribute("aria-pressed") === "true"
-    );
-
-    if (hasActiveOverflow) return;
+    if (hasActiveOverflowPill()) return;
 
     overflowPills.forEach((pill) => {
       pill.hidden = true;
@@ -414,11 +449,7 @@ export function initProjectFilter(rootElement?: HTMLElement | undefined): () => 
           activeTags.add(tag);
 
           // Ensure matching pill is unhidden even if in overflow
-          const escapedTag =
-            typeof CSS !== "undefined" && typeof CSS.escape === "function" ? CSS.escape(tag) : tag;
-          const matchingPill = container.querySelector<HTMLElement>(
-            `[data-filter-btn="${escapedTag}"]`
-          );
+          const matchingPill = pillByTag.get(tag);
           if (
             matchingPill &&
             matchingPill.hasAttribute("data-overflow-tag") &&
@@ -434,10 +465,7 @@ export function initProjectFilter(rootElement?: HTMLElement | undefined): () => 
         relayout(() => filterProjects(container, activeTags));
 
         // Scroll to the top of the projects section so user sees the filtered results
-        const reducedMotion =
-          typeof window !== "undefined" &&
-          typeof window.matchMedia === "function" &&
-          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const reducedMotion = prefersReducedMotion();
         container.scrollIntoView({
           behavior: reducedMotion ? "auto" : "smooth",
           block: "start"
@@ -454,8 +482,7 @@ export function initProjectFilter(rootElement?: HTMLElement | undefined): () => 
     const active = typeof document !== "undefined" ? document.activeElement : null;
     if (!active || !container.contains(active)) return;
 
-    const hasVisibleOverflow = Array.from(overflowPills).some((pill) => !pill.hidden);
-    if (hasVisibleOverflow) {
+    if (hasVisibleOverflowPill()) {
       e.preventDefault();
       collapseOverflow(true);
     }
@@ -472,6 +499,7 @@ export function initProjectFilter(rootElement?: HTMLElement | undefined): () => 
       document.removeEventListener("keydown", handleKeyDown);
     }
     dropLayout();
+    containerCache.delete(container);
     cleanups.delete(container);
   };
 

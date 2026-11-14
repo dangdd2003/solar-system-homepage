@@ -99,7 +99,7 @@ export function initSolarSystemUI(startupPhase: StartupPhase): () => void {
     }
 
     const body = getBody(id);
-    const theme = planetTheme(body.color);
+    const theme = panelThemes.get(id) ?? planetTheme(body.color);
     applyPlanetTheme(factCard, theme);
     if (btnToggleInfo) applyPlanetTheme(btnToggleInfo, theme);
 

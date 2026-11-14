@@ -261,7 +261,7 @@ export class StartupController {
   private completionDispatched = false;
   /** Set once the intro-started signal has been queued; it fires once, after two painted frames. */
   private introSignalQueued = false;
-  private pendingTimeouts: ReturnType<typeof setTimeout>[] = [];
+  private pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
   /** Max radius captured by the one master aperture while it is running. */
   private apertureMaxPx = 0;
   private resizeGuarded = false;
@@ -352,12 +352,12 @@ export class StartupController {
   private setTrackedTimeout(fn: () => void, delay: number): ReturnType<typeof setTimeout> {
     const handle = setTimeout(
       () => {
-        this.pendingTimeouts = this.pendingTimeouts.filter((timer) => timer !== handle);
+        this.pendingTimeouts.delete(handle);
         if (!this.isDisposed) fn();
       },
       Math.max(0, delay)
     );
-    this.pendingTimeouts.push(handle);
+    this.pendingTimeouts.add(handle);
     return handle;
   }
 
@@ -944,7 +944,7 @@ export class StartupController {
           : Math.min(Math.max(now - this.gateLastTs, 0), GATE_MAX_FRAME_MS);
       this.gateLastTs = now;
       try {
-        this.applyRevealGate(dt);
+        this.applyRevealGate(dt, now);
       } catch {
         // A gate fault must never block the reveal: release it and let the timeline run.
         this.releaseRevealGate();
@@ -959,7 +959,7 @@ export class StartupController {
    * reveal limit. Speed eases down through GATE_BAND_PX, a per-frame step cap stops
    * overshoot, and the timeline pauses when no progress is safe.
    */
-  private applyRevealGate(dt: number): void {
+  private applyRevealGate(dt: number, now: number): void {
     const timeline = this.timeline;
     const master = this.apertureEl;
     if (!timeline || !master) return;
@@ -968,11 +968,11 @@ export class StartupController {
     const limit = this.blastStarted ? revealLimitPx() : Infinity;
     if (limit !== Infinity && !this.gateEngaged) {
       this.gateEngaged = true;
-      this.gateEngagedAt = nowMs();
+      this.gateEngagedAt = now;
     }
     // Nothing has ever been pending: the aperture runs exactly as before.
     if (!this.gateEngaged) return;
-    if (this.gateHoldStartedAt !== null && nowMs() - this.gateHoldStartedAt >= this.maxGateWaitMs) {
+    if (this.gateHoldStartedAt !== null && now - this.gateHoldStartedAt >= this.maxGateWaitMs) {
       this.releaseRevealGate();
       return;
     }
@@ -1004,7 +1004,7 @@ export class StartupController {
     // Each hold is capped on its own: it starts when the limit first slows the wavefront and
     // ends once the limit has moved clear.
     if (target < 1) {
-      this.gateHoldStartedAt ??= nowMs();
+      this.gateHoldStartedAt ??= now;
     } else {
       this.gateHoldStartedAt = null;
     }
@@ -1019,7 +1019,7 @@ export class StartupController {
     this.applyHoldPulse(master, dt, 1 - speed);
 
     // Hold for as long as textures keep arriving; only a stalled load releases the gate.
-    if (speed < 1 && this.gateStalled(nowMs())) this.releaseRevealGate();
+    if (speed < 1 && this.gateStalled(now)) this.releaseRevealGate();
   }
 
   /**
@@ -1155,7 +1155,7 @@ export class StartupController {
     this.isDisposed = true;
     this.isComplete = true;
     this.pendingTimeouts.forEach((timer) => clearTimeout(timer));
-    this.pendingTimeouts = [];
+    this.pendingTimeouts.clear();
     this.removeResizeGuard();
     this.cancelOpeningAnimation();
     try {

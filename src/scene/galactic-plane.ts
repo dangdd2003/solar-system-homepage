@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import { BackSide, Mesh, ShaderMaterial, SphereGeometry } from "three";
 import { SIMPLEX_3D_GLSL } from "./noise-glsl";
 
 const GALACTIC_VERT = /* glsl */ `
@@ -66,18 +66,18 @@ export function buildGalacticSkybox(
   radius = 400,
   octaves = 4
 ): {
-  mesh: THREE.Mesh;
-  material: THREE.ShaderMaterial;
+  mesh: Mesh;
+  material: ShaderMaterial;
 } {
-  const geo = new THREE.SphereGeometry(radius, 48, 32);
-  const material = new THREE.ShaderMaterial({
+  const geo = new SphereGeometry(radius, 48, 32);
+  const material = new ShaderMaterial({
     vertexShader: GALACTIC_VERT,
     fragmentShader: getGalacticFrag(octaves),
-    side: THREE.BackSide,
+    side: BackSide,
     depthWrite: false,
     fog: false
   });
-  const mesh = new THREE.Mesh(geo, material);
+  const mesh = new Mesh(geo, material);
   // Drawn after the other opaque meshes (still before every transparent one), so the depth
   // test rejects sky fragments hidden behind planets instead of shading them first.
   mesh.renderOrder = 1;

@@ -108,7 +108,7 @@ const personJsonLd = JSON.stringify({
           /iPhone|iPod|iPad/.test(nav.userAgent) ||
           (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
         const standalone =
-          nav.standalone === true || matchMedia("(display-mode: standalone)").matches;
+          iOS && (nav.standalone === true || matchMedia("(display-mode: standalone)").matches);
         if ((iOS && !standalone) || /[?&]vpbleed\b/.test(location.search)) {
           document.documentElement.style.setProperty("--bleed-bottom", "120px");
         }
@@ -118,8 +118,12 @@ const personJsonLd = JSON.stringify({
       // visitor is using right now, including a mouse or trackpad attached to a touch device.
       (function () {
         const root = document.documentElement;
+        let currentMode = "";
         const set = function (mode) {
-          if (root.getAttribute("data-input") !== mode) root.setAttribute("data-input", mode);
+          if (currentMode !== mode) {
+            currentMode = mode;
+            root.setAttribute("data-input", mode);
+          }
         };
         const cursor =
           window.matchMedia &&

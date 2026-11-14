@@ -6,14 +6,20 @@ export interface Vec3 {
   z: number;
 }
 
+export interface CameraTarget {
+  position: Vec3;
+  lookAt: Vec3;
+}
+
 export function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-export function cameraTargetFor(
+export function cameraTargetForInto(
   body: BodyConfig,
-  bodyPos: Readonly<{ x: number; y?: number | undefined; z: number }>
-): { position: Vec3; lookAt: Vec3 } {
+  bodyPos: Readonly<{ x: number; y?: number | undefined; z: number }>,
+  out: CameraTarget
+): CameraTarget {
   const d = body.framingDistance;
   // The body may sit above/below the ecliptic on its inclined orbit; frame it
   // at its real height so the camera looks straight at it, not at y=0.
@@ -23,10 +29,23 @@ export function cameraTargetFor(
   // magnitude equals framingDistance exactly.
   const zPart = d * Math.cos(Math.PI / 6);
   const yPart = d * Math.sin(Math.PI / 6);
-  return {
-    position: { x: bodyPos.x, y: bodyY + yPart, z: bodyPos.z + zPart },
-    lookAt: { x: bodyPos.x, y: bodyY, z: bodyPos.z }
-  };
+  out.position.x = bodyPos.x;
+  out.position.y = bodyY + yPart;
+  out.position.z = bodyPos.z + zPart;
+  out.lookAt.x = bodyPos.x;
+  out.lookAt.y = bodyY;
+  out.lookAt.z = bodyPos.z;
+  return out;
+}
+
+export function cameraTargetFor(
+  body: BodyConfig,
+  bodyPos: Readonly<{ x: number; y?: number | undefined; z: number }>
+): CameraTarget {
+  return cameraTargetForInto(body, bodyPos, {
+    position: { x: 0, y: 0, z: 0 },
+    lookAt: { x: 0, y: 0, z: 0 }
+  });
 }
 
 // Framed to fit the whole system in view (outermost orbit ≈ 70 scene units).

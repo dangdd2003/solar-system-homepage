@@ -75,6 +75,22 @@ export function clampRadius(
  * down (+dy) moves it along `+up`, so content follows the cursor. Scaled by
  * `radius` so the pan feels even at any zoom. Pure: returns a new Vec3.
  */
+export function panDeltaInto(
+  dxPixels: number,
+  dyPixels: number,
+  right: Readonly<Vec3>,
+  up: Readonly<Vec3>,
+  radius: number,
+  out: Vec3
+): Vec3 {
+  const kx = -dxPixels * PAN_PER_PIXEL_PER_RADIUS * radius;
+  const ky = dyPixels * PAN_PER_PIXEL_PER_RADIUS * radius;
+  out.x = right.x * kx + up.x * ky;
+  out.y = right.y * kx + up.y * ky;
+  out.z = right.z * kx + up.z * ky;
+  return out;
+}
+
 export function panDelta(
   dxPixels: number,
   dyPixels: number,
@@ -82,13 +98,26 @@ export function panDelta(
   up: Vec3,
   radius: number
 ): Vec3 {
-  const kx = -dxPixels * PAN_PER_PIXEL_PER_RADIUS * radius;
-  const ky = dyPixels * PAN_PER_PIXEL_PER_RADIUS * radius;
-  return {
-    x: right.x * kx + up.x * ky,
-    y: right.y * kx + up.y * ky,
-    z: right.z * kx + up.z * ky
-  };
+  return panDeltaInto(dxPixels, dyPixels, right, up, radius, { x: 0, y: 0, z: 0 });
+}
+
+/**
+ * Clamp a look-target position to within MAX_PAN_DISTANCE of the origin,
+ * writing into `out` (aliasing `target === out` is safe).
+ */
+export function clampPanTargetInto(target: Readonly<Vec3>, out: Vec3): Vec3 {
+  const dist = Math.hypot(target.x, target.y, target.z);
+  if (dist <= MAX_PAN_DISTANCE) {
+    out.x = target.x;
+    out.y = target.y;
+    out.z = target.z;
+    return out;
+  }
+  const s = MAX_PAN_DISTANCE / dist;
+  out.x = target.x * s;
+  out.y = target.y * s;
+  out.z = target.z * s;
+  return out;
 }
 
 /**
@@ -96,10 +125,7 @@ export function panDelta(
  * scene can't be panned irretrievably far away. Pure: returns a new Vec3.
  */
 export function clampPanTarget(target: Vec3): Vec3 {
-  const dist = Math.hypot(target.x, target.y, target.z);
-  if (dist <= MAX_PAN_DISTANCE) return { ...target };
-  const s = MAX_PAN_DISTANCE / dist;
-  return { x: target.x * s, y: target.y * s, z: target.z * s };
+  return clampPanTargetInto(target, { x: 0, y: 0, z: 0 });
 }
 
 /** Spherical offset → cartesian offset from the target. */
@@ -124,16 +150,28 @@ export function cartesianToSpherical(v: Vec3): Spherical {
 }
 
 /**
+ * Allocation-free variant of `applyOrbitDrag`: writes into `out` (aliasing
+ * `s === out` is safe).
+ */
+export function applyOrbitDragInto(
+  s: Readonly<Spherical>,
+  dxPixels: number,
+  dyPixels: number,
+  out: Spherical
+): Spherical {
+  out.radius = s.radius;
+  out.yaw = s.yaw - dxPixels * DRAG_TO_RADIANS;
+  out.pitch = clampPitch(s.pitch + dyPixels * DRAG_TO_RADIANS);
+  return out;
+}
+
+/**
  * Apply a pointer drag (in pixels) to a spherical offset. Horizontal drag
  * rotates yaw; vertical drag tilts pitch (clamped away from the poles). Radius
  * is untouched. Pure: returns a new object.
  */
 export function applyOrbitDrag(s: Spherical, dxPixels: number, dyPixels: number): Spherical {
-  return {
-    radius: s.radius,
-    yaw: s.yaw - dxPixels * DRAG_TO_RADIANS,
-    pitch: clampPitch(s.pitch + dyPixels * DRAG_TO_RADIANS)
-  };
+  return applyOrbitDragInto(s, dxPixels, dyPixels, { radius: 0, yaw: 0, pitch: 0 });
 }
 
 /**

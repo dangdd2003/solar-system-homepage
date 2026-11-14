@@ -1,4 +1,14 @@
-import * as THREE from "three";
+import {
+  ImageBitmapLoader,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  RingGeometry,
+  SRGBColorSpace,
+  Texture,
+  TextureLoader,
+  WebGLRenderer
+} from "three";
 import type { BodyId } from "./bodies";
 import type { BuiltBodies } from "./scene-builder";
 import { releasePlaceholder } from "./solid-texture";
@@ -18,20 +28,20 @@ declare global {
 }
 
 /**
- * Anything that loads a texture by URL. THREE.TextureLoader satisfies it; so does
- * the bitmap source below. `onLoad` always receives a THREE.Texture.
+ * Anything that loads a texture by URL. TextureLoader satisfies it; so does
+ * the bitmap source below. `onLoad` always receives a Texture.
  */
 export interface TextureSource {
   load(
     url: string,
-    onLoad: (tex: THREE.Texture) => void,
+    onLoad: (tex: Texture) => void,
     onProgress?: unknown,
     onError?: (err?: unknown) => void
   ): void;
 }
 
 /**
- * Loads textures through THREE.ImageBitmapLoader (fetch + createImageBitmap). The
+ * Loads textures through ImageBitmapLoader (fetch + createImageBitmap). The
  * browser decodes the image off the main thread; a TextureLoader instead decodes
  * synchronously inside the first upload. The bitmap backs its texture until the
  * texture is disposed.
@@ -39,21 +49,21 @@ export interface TextureSource {
 class BitmapTextureSource implements TextureSource {
   // WebGL ignores UNPACK_FLIP_Y for ImageBitmap sources, so the flip happens at decode
   // and the texture must not ask for another one.
-  private readonly bitmaps = new THREE.ImageBitmapLoader().setOptions({
+  private readonly bitmaps = new ImageBitmapLoader().setOptions({
     imageOrientation: "flipY",
     premultiplyAlpha: "none"
   });
 
   load(
     url: string,
-    onLoad: (tex: THREE.Texture) => void,
+    onLoad: (tex: Texture) => void,
     _onProgress?: unknown,
     onError?: (err?: unknown) => void
   ): void {
     this.bitmaps.load(
       url,
       (bitmap) => {
-        const tex = new THREE.Texture(bitmap);
+        const tex = new Texture(bitmap);
         tex.flipY = false;
         tex.addEventListener("dispose", () => bitmap.close());
         tex.needsUpdate = true;
@@ -68,7 +78,7 @@ class BitmapTextureSource implements TextureSource {
 /** Default texture source: bitmaps where the browser supports them, TextureLoader otherwise. */
 export function createTextureSource(): TextureSource {
   const bitmapsSupported = typeof createImageBitmap === "function" && typeof fetch === "function";
-  return bitmapsSupported ? new BitmapTextureSource() : new THREE.TextureLoader();
+  return bitmapsSupported ? new BitmapTextureSource() : new TextureLoader();
 }
 
 /** Downloads in flight at once when textures are prioritized. */
@@ -145,7 +155,7 @@ function createUploadQueue(): (upload: () => void) => void {
 interface Job {
   readonly id: TextureJobId;
   readonly url: string;
-  readonly apply: (tex: THREE.Texture) => void;
+  readonly apply: (tex: Texture) => void;
 }
 
 /** One surface texture to stream: what `buildJobs` returns. */
@@ -156,7 +166,7 @@ export type TextureJob = Job;
  * angles, which is where the planets' limbs and the ring are seen. Renderers
  * without the capability query (test doubles) keep the default of 1.
  */
-function textureAnisotropy(renderer: THREE.WebGLRenderer | undefined): number {
+function textureAnisotropy(renderer: WebGLRenderer | undefined): number {
   const gpuMax = renderer?.capabilities?.getMaxAnisotropy?.();
   if (typeof gpuMax !== "number" || gpuMax <= 1) return 1;
   return Math.min(MAX_TEXTURE_ANISOTROPY, gpuMax);
@@ -223,7 +233,7 @@ export function buildJobs(built: BuiltBodies): Job[] {
     url: EARTH_CLOUDS_TEXTURE_URL,
     apply: (tex) => {
       const mat = built.earthClouds.material;
-      if (!(mat instanceof THREE.MeshStandardMaterial)) return;
+      if (!(mat instanceof MeshStandardMaterial)) return;
       releasePlaceholder(mat.map);
       releasePlaceholder(mat.alphaMap);
       // Same map presence and colour space as the placeholders, so no program change.
@@ -248,7 +258,7 @@ export function buildJobs(built: BuiltBodies): Job[] {
   const saturn = built.meshes.get("saturn");
   if (saturn) {
     const ring = saturn.children.find(
-      (c): c is THREE.Mesh => c instanceof THREE.Mesh && c.geometry instanceof THREE.RingGeometry
+      (c): c is Mesh => c instanceof Mesh && c.geometry instanceof RingGeometry
     );
     if (ring) {
       jobs.push({
@@ -256,7 +266,7 @@ export function buildJobs(built: BuiltBodies): Job[] {
         url: SATURN_RING_TEXTURE_URL,
         apply: (tex) => {
           const mat = ring.material;
-          if (!(mat instanceof THREE.MeshBasicMaterial)) return;
+          if (!(mat instanceof MeshBasicMaterial)) return;
           releasePlaceholder(mat.map);
           releasePlaceholder(mat.alphaMap);
           mat.map = tex;
@@ -301,7 +311,7 @@ async function runPool<T>(
 export function loadAndApplyTextures(
   built: BuiltBodies,
   opts: TextureLoadOptions = {},
-  renderer?: THREE.WebGLRenderer
+  renderer?: WebGLRenderer
 ): Promise<void> {
   const signal = opts.signal;
   const loader = opts.loader ?? createTextureSource();
@@ -351,7 +361,7 @@ export function loadAndApplyTextures(
               try {
                 // The one colour-space writer for streamed surfaces. Every apply helper runs after
                 // this, so none of them sets it again.
-                tex.colorSpace = THREE.SRGBColorSpace;
+                tex.colorSpace = SRGBColorSpace;
                 // Read by the texture parameters set during this first upload.
                 tex.anisotropy = anisotropy;
                 tex.needsUpdate = true;
@@ -402,9 +412,9 @@ export function loadAndApplyTextures(
 
 /** Apply a surface map to a body and reset its tint color to white so the
  *  texture displays its true colours at full brightness. */
-export function applySurface(mesh: THREE.Mesh, tex: THREE.Texture): void {
+export function applySurface(mesh: Mesh, tex: Texture): void {
   const mat = mesh.material;
-  if (!(mat instanceof THREE.MeshBasicMaterial) && !(mat instanceof THREE.MeshStandardMaterial)) {
+  if (!(mat instanceof MeshBasicMaterial) && !(mat instanceof MeshStandardMaterial)) {
     return;
   }
   releasePlaceholder(mat.map);

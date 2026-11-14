@@ -1,4 +1,15 @@
-import * as THREE from "three";
+import {
+  BackSide,
+  CustomBlending,
+  Group,
+  Mesh,
+  OneFactor,
+  PerspectiveCamera,
+  ShaderMaterial,
+  SphereGeometry,
+  Texture,
+  Vector3
+} from "three";
 import { SIMPLEX_3D_GLSL } from "./noise-glsl";
 import { releasePlaceholder, solidTexture } from "./solid-texture";
 import { SUN_CONVECTION_GLSL } from "./sun-convection-glsl";
@@ -32,14 +43,14 @@ import { haloReachesViewport, type SunHaloMetrics, sunHaloMetrics } from "./sun-
  */
 export interface AnimatedSun {
   /** Add THIS to the scene. Wraps the photosphere so callers add one object. */
-  group: THREE.Group;
+  group: Group;
   /** The photosphere mesh — carries userData.bodyId for picking/focus. */
-  mesh: THREE.Mesh;
+  mesh: Mesh;
   /**
    * The halo shell: additive light scattered past the limb. A sibling of `group`, not a child, so
    * the caller adds it to the scene beside the group. Decoration only: never picked.
    */
-  haloMesh: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
+  haloMesh: Mesh<SphereGeometry, ShaderMaterial>;
   /** Advance all animated uniforms to scene time `t` (seconds). */
   update: (t: number) => void;
   /**
@@ -47,9 +58,9 @@ export interface AnimatedSun {
    * Sun's entrance scale and reveal, and hide the shell while the halo cannot reach the screen.
    * Call after the rig has moved the camera.
    */
-  updateHalo: (camera: THREE.PerspectiveCamera, viewportHeightCss: number) => void;
+  updateHalo: (camera: PerspectiveCamera, viewportHeightCss: number) => void;
   /** Feed the streamed NASA surface map into the photosphere shader. Does not change the reveal. */
-  setSurfaceMap: (tex: THREE.Texture) => void;
+  setSurfaceMap: (tex: Texture) => void;
   /** How much of the surface map is in: 0 leaves the procedural colour as it is, 1 multiplies the map in fully. */
   setReveal: (progress: number) => void;
   /**
@@ -190,26 +201,26 @@ void main() {
  * is per-fragment, so even a coarse sphere still churns smoothly.
  */
 export function buildSun(radius: number, segments: number): AnimatedSun {
-  const group = new THREE.Group();
+  const group = new Group();
 
   // Photosphere.
   // A white placeholder keeps uMap bound from the first compile. At reveal 0 it has no
   // effect, since the multiply is mix(1, ...).
   const uniforms: {
     uTime: { value: number };
-    uMap: { value: THREE.Texture };
+    uMap: { value: Texture };
     uReveal: { value: number };
   } = {
     uTime: { value: 0 },
     uMap: { value: solidTexture(255, 255, 255) },
     uReveal: { value: 0 }
   };
-  const photMat = new THREE.ShaderMaterial({
+  const photMat = new ShaderMaterial({
     uniforms,
     vertexShader: PHOTOSPHERE_VERT,
     fragmentShader: SIMPLEX_3D_GLSL + SUN_CONVECTION_GLSL + SUN_OPTICS_GLSL + PHOTOSPHERE_FRAG
   });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, segments, segments), photMat);
+  const mesh = new Mesh(new SphereGeometry(radius, segments, segments), photMat);
   mesh.userData.bodyId = "sun";
   group.add(mesh);
 
@@ -219,29 +230,29 @@ export function buildSun(radius: number, segments: number): AnimatedSun {
     uR: { value: number };
     uW: { value: number };
     uGain: { value: number };
-    uHot: { value: THREE.Vector3 };
-    uMid: { value: THREE.Vector3 };
+    uHot: { value: Vector3 };
+    uMid: { value: Vector3 };
   } = {
     uR: { value: radius },
     uW: { value: 1 },
     uGain: { value: 0 },
     // Display-space: uMid is the photosphere's dominant orange (SUN_SURFACE_COLOR), uHot its white-gold rim.
-    uHot: { value: new THREE.Vector3(1.0, 0.78, 0.42) },
-    uMid: { value: new THREE.Vector3(1.0, 0.42, 0.05) }
+    uHot: { value: new Vector3(1.0, 0.78, 0.42) },
+    uMid: { value: new Vector3(1.0, 0.42, 0.05) }
   };
-  const haloMat = new THREE.ShaderMaterial({
+  const haloMat = new ShaderMaterial({
     uniforms: haloUniforms,
     vertexShader: HALO_VERT,
     fragmentShader: HALO_FRAG,
-    side: THREE.BackSide,
+    side: BackSide,
     transparent: true,
     depthWrite: false,
     depthTest: true,
-    blending: THREE.CustomBlending,
-    blendSrc: THREE.OneFactor,
-    blendDst: THREE.OneFactor
+    blending: CustomBlending,
+    blendSrc: OneFactor,
+    blendDst: OneFactor
   });
-  const haloMesh = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments), haloMat);
+  const haloMesh = new Mesh(new SphereGeometry(1, segments, segments), haloMat);
   // Drawn after the opaque photosphere and planets, so its depth test sees them.
   haloMesh.renderOrder = 2;
   // Decoration only: never intercept picking.
@@ -250,12 +261,12 @@ export function buildSun(radius: number, segments: number): AnimatedSun {
   haloMesh.frustumCulled = false;
 
   // Per-frame scratch, reused so updateHalo allocates nothing.
-  const sunPos = new THREE.Vector3();
-  const cameraPos = new THREE.Vector3();
-  const toSun = new THREE.Vector3();
-  const camRight = new THREE.Vector3();
-  const camUp = new THREE.Vector3();
-  const camBack = new THREE.Vector3();
+  const sunPos = new Vector3();
+  const cameraPos = new Vector3();
+  const toSun = new Vector3();
+  const camRight = new Vector3();
+  const camUp = new Vector3();
+  const camBack = new Vector3();
   const sunInCamera = { x: 0, y: 0, z: 0 };
   const haloMetrics: SunHaloMetrics = { discPx: 0, widthPx: 0, widthWorld: 0, peakGain: 0 };
   // Set once the surface will never reveal (its map failed): the halo then stands at full strength.
@@ -268,7 +279,7 @@ export function buildSun(radius: number, segments: number): AnimatedSun {
     update(t: number) {
       uniforms.uTime.value = t;
     },
-    updateHalo(camera: THREE.PerspectiveCamera, viewportHeightCss: number) {
+    updateHalo(camera: PerspectiveCamera, viewportHeightCss: number) {
       // The entrance grow-in scales the group from 0 to 1; the halo follows that scale and the reveal.
       const s = Math.min(1, Math.max(0, group.scale.x));
       const R = radius * s;
@@ -299,7 +310,7 @@ export function buildSun(radius: number, segments: number): AnimatedSun {
         gain > 0 &&
         haloReachesViewport(sunInCamera, R, R + m.widthWorld, camera.fov, H * camera.aspect, H);
     },
-    setSurfaceMap(tex: THREE.Texture) {
+    setSurfaceMap(tex: Texture) {
       // Colour space is set by the loader's upload, before this runs (the one writer for streamed textures).
       releasePlaceholder(uniforms.uMap.value);
       uniforms.uMap.value = tex;

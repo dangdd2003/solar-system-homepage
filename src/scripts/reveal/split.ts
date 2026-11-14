@@ -23,6 +23,7 @@
 import { splitText } from "animejs/text";
 import type { TextSplitter } from "animejs";
 import { paintTextClip } from "./text-clip";
+import { sizeOf } from "./kit";
 
 export type SplitMode = "chars" | "words" | "lines";
 
@@ -173,8 +174,8 @@ export function getSplit(host: HTMLElement, mode: SplitMode): SplitParts {
 
   const cached = cache.get(target);
   if (cached) {
-    const widthChanged =
-      cached.width > 0 && target.offsetWidth > 0 && target.offsetWidth !== cached.width;
+    const currentWidth = cached.width > 0 ? sizeOf(target).w : 0;
+    const widthChanged = cached.width > 0 && currentWidth > 0 && currentWidth !== cached.width;
     if (!widthChanged) {
       if (
         cached.mode === mode ||

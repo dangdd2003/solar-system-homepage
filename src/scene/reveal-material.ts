@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import { Color, Material, MeshBasicMaterial, MeshStandardMaterial } from "three";
 import { SIMPLEX_3D_GLSL } from "./noise-glsl";
 
 /**
@@ -109,12 +109,12 @@ function anchored(source: string, anchor: string, replacement: string): string {
  * progress. The sweep switch is a uniform, so both modes share a key.
  */
 export function installReveal(
-  material: THREE.MeshStandardMaterial | THREE.MeshBasicMaterial,
+  material: MeshStandardMaterial | MeshBasicMaterial,
   opts: RevealOptions
 ): RevealHandle {
   // A material without a hook inherits three's no-op, so only an own hook counts as prior.
   const prior =
-    material.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile
+    material.onBeforeCompile !== Material.prototype.onBeforeCompile
       ? material.onBeforeCompile
       : undefined;
   if (prior && opts.chain === undefined) {
@@ -131,9 +131,9 @@ export function installReveal(
 
   const uReveal = { value: 0 };
   const uRevealSweep = { value: opts.sweep ? 1 : 0 };
-  const uRevealFlat = { value: new THREE.Color(opts.flatColor) };
+  const uRevealFlat = { value: new Color(opts.flatColor) };
   const uRevealInvRadius = { value: 1 / radius };
-  const uRevealEdgeColor = { value: new THREE.Color(REVEAL_EDGE_COLOR) };
+  const uRevealEdgeColor = { value: new Color(REVEAL_EDGE_COLOR) };
 
   material.onBeforeCompile = (shader, renderer) => {
     if (prior) prior.call(material, shader, renderer);

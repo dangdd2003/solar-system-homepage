@@ -1,8 +1,15 @@
-import * as THREE from "three";
+import { PerspectiveCamera, Vector3 } from "three";
 import { type BodyId, getBody } from "./bodies";
-import { easeInOutCubic, OVERVIEW_TARGET, overviewPositionFor, type Vec3 } from "./camera-path";
 import {
-  coast,
+  type CameraTarget,
+  easeInOutCubic,
+  OVERVIEW_TARGET,
+  overviewPositionFor,
+  type Vec3
+} from "./camera-path";
+import {
+  coastInto,
+  type CoastStep,
   flightDuration,
   flightLift,
   shortestAngle,
@@ -11,13 +18,13 @@ import {
 } from "./camera-motion";
 import { framingPosition, framingProgress } from "./resize-framing";
 import {
-  applyOrbitDrag,
+  applyOrbitDragInto,
   applyZoom,
   cartesianToSpherical,
-  clampPanTarget,
+  clampPanTargetInto,
   MAX_RADIUS,
   minRadiusForSize,
-  panDelta,
+  panDeltaInto,
   PITCH_LIMIT,
   type Spherical
 } from "./orbit-math";
@@ -44,7 +51,7 @@ export interface CameraRigOptions {
   reducedMotion: boolean;
   onFocusChange: (state: FocusState) => void;
   /** Live camera destination for a body at its current orbital position. */
-  resolveDestination: (id: BodyId) => { position: Vec3; lookAt: Vec3 } | null;
+  resolveDestination: (id: BodyId, out?: CameraTarget) => CameraTarget | null;
   /**
    * Optional: the camera was just given something to animate (a gesture, flight, fling
    * or re-framing). A render loop that idles at rest uses it to wake up.
@@ -116,13 +123,13 @@ const REST_EPSILON = 1e-4;
 const REST_VELOCITY_FACTOR = 10;
 
 export class CameraRig {
-  readonly camera: THREE.PerspectiveCamera;
-  private readonly currentLook: THREE.Vector3;
+  readonly camera: PerspectiveCamera;
+  private readonly currentLook: Vector3;
   // Scratch vectors for deriving the camera's screen axes during a pan, reused
   // so a drag doesn't allocate a Vector3 per pointer move.
-  private readonly scratchRight = new THREE.Vector3();
-  private readonly scratchUp = new THREE.Vector3();
-  private readonly scratchFwd = new THREE.Vector3();
+  private readonly scratchRight = new Vector3();
+  private readonly scratchUp = new Vector3();
+  private readonly scratchFwd = new Vector3();
   private reducedMotion: boolean;
   private readonly onFocusChange: (state: FocusState) => void;
   private readonly resolveDestination: CameraRigOptions["resolveDestination"];
@@ -142,16 +149,23 @@ export class CameraRig {
   // them each frame, so every orbit, zoom and pan eases in and out.
   private manual: Spherical | null = null;
   private goal: Spherical = { radius: 1, yaw: 0, pitch: 0 };
-  private readonly lookGoal = new THREE.Vector3();
+  private readonly lookGoal = new Vector3();
   // Spring velocities: yaw/pitch in rad/s, radius in log-units/s (so zoom
   // feels the same at any distance), look target in scene units/s.
   private readonly vel = { yaw: 0, pitch: 0, logRadius: 0 };
-  private readonly lookVel = new THREE.Vector3();
+  private readonly lookVel = new Vector3();
   private readonly scratchSpring: SpringState = { value: 0, velocity: 0 };
   // Per-frame cartesian offset (camera minus look target), reused by the tween
   // and manual paths so update() doesn't allocate. Only ever read immediately
   // after being written; never stored or handed out.
   private readonly scratchOffset: Vec3 = { x: 0, y: 0, z: 0 };
+  private readonly scratchDest: CameraTarget = {
+    position: { x: 0, y: 0, z: 0 },
+    lookAt: { x: 0, y: 0, z: 0 }
+  };
+  private readonly scratchPanDelta: Vec3 = { x: 0, y: 0, z: 0 };
+  private readonly scratchCoastX: CoastStep = { distance: 0, velocity: 0 };
+  private readonly scratchCoastY: CoastStep = { distance: 0, velocity: 0 };
   // Momentum from the last released drag, coasting down under friction.
   private fling: Fling | null = null;
   // Elapsed time of the previous update(), for the per-frame step.
@@ -185,13 +199,13 @@ export class CameraRig {
     // the camera's max distance from origin, or the skybox's far hemisphere gets
     // clipped — showing the transparent canvas (page background) through a
     // camera-following circular seam. 2000 leaves generous headroom.
-    this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 2000);
+    this.camera = new PerspectiveCamera(55, 1, 0.1, 2000);
     this.camera.position.set(
       OVERVIEW_TARGET.position.x,
       OVERVIEW_TARGET.position.y,
       OVERVIEW_TARGET.position.z
     );
-    this.currentLook = new THREE.Vector3(
+    this.currentLook = new Vector3(
       OVERVIEW_TARGET.lookAt.x,
       OVERVIEW_TARGET.lookAt.y,
       OVERVIEW_TARGET.lookAt.z
@@ -200,7 +214,7 @@ export class CameraRig {
   }
 
   focus(id: BodyId): void {
-    const dest = this.resolveDestination(id);
+    const dest = this.resolveDestination(id, this.scratchDest);
     if (!dest) return;
     this.startTween(dest.position, dest.lookAt, id);
   }
@@ -222,7 +236,7 @@ export class CameraRig {
    */
   orbit(dxPixels: number, dyPixels: number): void {
     this.beginManual();
-    this.goal = applyOrbitDrag(this.goal, dxPixels, dyPixels);
+    applyOrbitDragInto(this.goal, dxPixels, dyPixels, this.goal);
     this.afterGesture();
   }
 
@@ -299,13 +313,19 @@ export class CameraRig {
     // so the world matrix here is from the latest frame. Don't reorder that.
     this.camera.updateMatrixWorld();
     this.camera.matrixWorld.extractBasis(this.scratchRight, this.scratchUp, this.scratchFwd);
-    const d = panDelta(dxPixels, dyPixels, this.scratchRight, this.scratchUp, this.manual.radius);
-    const moved = clampPanTarget({
-      x: this.lookGoal.x + d.x,
-      y: this.lookGoal.y + d.y,
-      z: this.lookGoal.z + d.z
-    });
-    this.lookGoal.set(moved.x, moved.y, moved.z);
+    const d = panDeltaInto(
+      dxPixels,
+      dyPixels,
+      this.scratchRight,
+      this.scratchUp,
+      this.manual.radius,
+      this.scratchPanDelta
+    );
+    this.scratchPanDelta.x = this.lookGoal.x + d.x;
+    this.scratchPanDelta.y = this.lookGoal.y + d.y;
+    this.scratchPanDelta.z = this.lookGoal.z + d.z;
+    clampPanTargetInto(this.scratchPanDelta, this.scratchPanDelta);
+    this.lookGoal.set(this.scratchPanDelta.x, this.scratchPanDelta.y, this.scratchPanDelta.z);
   }
 
   /**
@@ -432,19 +452,19 @@ export class CameraRig {
     // conversions a live drag uses, so the glide continues the gesture exactly.
     const f = this.fling;
     if (f !== null) {
-      const cx = coast(f.vx, FLING_TAU, dt);
-      const cy = coast(f.vy, FLING_TAU, dt);
+      const cx = coastInto(f.vx, FLING_TAU, dt, this.scratchCoastX);
+      const cy = coastInto(f.vy, FLING_TAU, dt, this.scratchCoastY);
       f.vx = cx.velocity;
       f.vy = cy.velocity;
       if (f.mode === "pan") this.panGoal(cx.distance, cy.distance);
-      else this.goal = applyOrbitDrag(this.goal, cx.distance, cy.distance);
+      else applyOrbitDragInto(this.goal, cx.distance, cy.distance, this.goal);
       if (Math.hypot(f.vx, f.vy) < FLING_STOP_SPEED) this.fling = null;
     }
 
     // Locked on a planet: the look center rides along with it exactly (it
     // moves smoothly on its own), so only the offset around it is sprung.
     if (this.focused !== null) {
-      const dest = this.resolveDestination(this.focused);
+      const dest = this.resolveDestination(this.focused, this.scratchDest);
       if (dest) {
         this.lookGoal.set(dest.lookAt.x, dest.lookAt.y, dest.lookAt.z);
         this.currentLook.copy(this.lookGoal);
@@ -467,9 +487,12 @@ export class CameraRig {
     const logR = Math.log(Math.max(m.radius, 1e-6));
     const logGoal = Math.log(Math.max(g.radius, 1e-6));
     s = this.spring(logR, this.vel.logRadius, logGoal, ZOOM_OMEGA, dt);
-    const radius = holdLimit(m.radius, Math.exp(s.value), this.minZoomRadius(), this.zoomCeiling);
-    this.vel.logRadius = radius === Math.exp(s.value) ? s.velocity : 0;
+    const expRadius = Math.exp(s.value);
+    const radius = holdLimit(m.radius, expRadius, this.minZoomRadius(), this.zoomCeiling);
+    const unclamped = radius === expRadius;
+    this.vel.logRadius = unclamped ? s.velocity : 0;
     m.radius = radius;
+    const newLogR = unclamped ? s.value : Math.log(Math.max(radius, 1e-6));
 
     for (const axis of LOOK_AXES) {
       const look = this.spring(
@@ -487,7 +510,7 @@ export class CameraRig {
     const atRest =
       settled(m.yaw, g.yaw, this.vel.yaw, REST_EPSILON) &&
       settled(m.pitch, g.pitch, this.vel.pitch, REST_EPSILON) &&
-      settled(Math.log(m.radius), logGoal, this.vel.logRadius, REST_EPSILON) &&
+      settled(newLogR, logGoal, this.vel.logRadius, REST_EPSILON) &&
       this.currentLook.distanceTo(this.lookGoal) < lookEps &&
       this.lookVel.length() < lookEps * REST_VELOCITY_FACTOR;
     if (atRest) this.snapToGoal();
@@ -705,7 +728,7 @@ export class CameraRig {
       if (tw.start === null) tw.start = elapsed;
       // Re-aim the tween's end at the target's LIVE position so it keeps
       // orbiting during the fly-to and the camera arrives on the moving planet.
-      const live = tw.target !== null ? this.resolveDestination(tw.target) : null;
+      const live = tw.target !== null ? this.resolveDestination(tw.target, this.scratchDest) : null;
       if (live) {
         // tw.toLook and tw.toOffset are tween-owned (created in startTween), so
         // both are overwritten in place rather than allocating every frame.
@@ -749,7 +772,7 @@ export class CameraRig {
     } else if (this.focused !== null) {
       // Locked on a focused planet: ride along with it as it orbits, keeping
       // the same framing offset so the viewing window stays fixed on it.
-      const dest = this.resolveDestination(this.focused);
+      const dest = this.resolveDestination(this.focused, this.scratchDest);
       if (dest) {
         this.camera.position.set(dest.position.x, dest.position.y, dest.position.z);
         this.currentLook.set(dest.lookAt.x, dest.lookAt.y, dest.lookAt.z);

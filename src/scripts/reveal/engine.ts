@@ -17,10 +17,13 @@ import {
   clearPrimedRects,
   FX_ATTR,
   itemsOf,
+  parts,
+  primeColor,
   primeRect,
   primeSize,
   type EffectContext
 } from "./kit";
+import { primeGlass } from "./pools/glass";
 import {
   parseType,
   createRoller,
@@ -146,6 +149,8 @@ function watchPanel(panel: HTMLElement, loadSeed: number, options: RevealOptions
     clearFxAttrs(el, false);
   };
 
+  let cachedAccentRgb: string | null = null;
+
   /** Plays a batch of elements as one cascade in reading order. */
   const playCascade = (elements: HTMLElement[]): void => {
     // 1. Batch layout reads before writes (Audit finding 17)
@@ -170,17 +175,34 @@ function watchPanel(panel: HTMLElement, loadSeed: number, options: RevealOptions
     const cascadePlan = planCascade(entries, slots, rolls);
 
     const compact = profile.compact;
-    const accentRgb =
-      getComputedStyle(panel).getPropertyValue("--planet-rgb").trim() || "255, 255, 255";
+    const accentRgb = (cachedAccentRgb ??=
+      getComputedStyle(panel).getPropertyValue("--planet-rgb").trim() || "255, 255, 255");
 
-    // Cluster hosts read their items' rects too: read them now, before any write dirties layout.
+    // Prime rects, sizes, and computed styles before any write dirties layout.
     for (const { el } of ordered) {
-      if (el.hasAttribute("data-reveal-items")) itemsOf(el).forEach(primeRect);
+      const items = itemsOf(el);
+      for (const item of items) {
+        primeRect(item);
+      }
+      if (items[0]) {
+        primeGlass(items[0]);
+      }
       primeRect(el);
-      // Builders that place decorative parts (the hero lens) read layout sizes too.
-      if (el.querySelector("[data-reveal-part]")) {
-        primeSize(el);
-        el.querySelectorAll<HTMLElement>("[data-reveal-part]").forEach(primeSize);
+      primeSize(el);
+      const splitTarget = el.querySelector<HTMLElement>("[data-reveal-split]");
+      if (splitTarget) {
+        primeSize(splitTarget);
+      }
+      const cs = getComputedStyle(el);
+      primeGlass(el, cs);
+      primeColor(el, cs);
+      // Builders that place decorative parts (the hero lens, timeline stars) read layout/glass too.
+      const revealParts = el.querySelectorAll<HTMLElement>("[data-reveal-part]");
+      for (const node of revealParts) {
+        primeSize(node);
+      }
+      for (const star of parts(el, "star")) {
+        primeGlass(star);
       }
     }
 

@@ -10,7 +10,16 @@
  * - retrograde: draws backwards from the far end, like a planet's loop.
  */
 
-import { glow, seq, timeline, tw, useStroke, type EffectBuilder, type EffectContext } from "../kit";
+import {
+  glow,
+  isVertical,
+  seq,
+  timeline,
+  tw,
+  useStroke,
+  type EffectBuilder,
+  type EffectContext
+} from "../kit";
 
 type Geometry = {
   readonly stroke: boolean;
@@ -21,7 +30,7 @@ type Geometry = {
 /** Picks the stroke path when the host holds a `pathLength="1"` stroke; otherwise a bar along its long side. */
 function geometry(el: HTMLElement): Geometry {
   const stroke = useStroke(el);
-  const vertical = el.offsetHeight > el.offsetWidth;
+  const vertical = isVertical(el);
   return { stroke, vertical, axis: vertical ? "--rv-sy" : "--rv-sx" };
 }
 
